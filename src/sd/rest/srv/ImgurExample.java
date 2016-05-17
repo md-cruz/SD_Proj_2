@@ -8,7 +8,17 @@ import com.github.scribejava.core.model.Response;
 import com.github.scribejava.core.model.Verb;
 import com.github.scribejava.core.oauth.OAuth20Service;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.net.URLConnection;
 import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
 import java.util.Scanner;
 
 import org.json.simple.JSONArray;
@@ -52,11 +62,14 @@ public abstract class ImgurExample
 	public static void main(String... args) {
 		try {
 			// Substituir pela API key atribuida
-			final String apiKey = "87d56e838ce5413"; 
+			final String apiKey = "ae169aff6383f6f"; 
 			// Substituir pelo API secret atribuido
-			final String apiSecret = "b5ed4dadbc629cfd1058c678d10a795f9dbcb5a9"; 
+			final String apiSecret = "a009a369aeee37a15e549fc6f851cc5ac01ef09e"; 
 			
-			final OAuth20Service service = new ServiceBuilder().apiKey(apiKey).apiSecret(apiSecret)
+			final OAuth20Service service = new ServiceBuilder()
+					.apiKey(apiKey)
+					.apiSecret(apiSecret)
+					.callback("http://www.google.com")
 					.build(ImgurApi.instance());
 			final Scanner in = new Scanner(System.in);
 
@@ -67,12 +80,18 @@ public abstract class ImgurExample
 			System.out.println(authorizationUrl);
 			System.out.println("e copiar o codigo obtido para aqui:");
 			System.out.print(">>");
-			final String code = in.nextLine();
+			String code = getPinFromPage(service,authorizationUrl,apiKey);
 
 			// Trade the Request Token and Verifier for the Access Token
 			System.out.println("A obter o Access Token!");
 			final OAuth2AccessToken accessToken = service.getAccessToken(code);
-
+			System.out.println("rawResponse " +accessToken.getRawResponse());
+			System.out.println("scope " +accessToken.getScope());
+			System.out.println("refreshToken " +accessToken.getRefreshToken());
+			System.out.println("tokenType " +accessToken.getTokenType());
+			System.out.println("accessToken " +accessToken.getAccessToken());
+			
+			
 			// Ready to execute operations
 			System.out.println("Agora vamos aceder aos albuns dum utilizador...");
 			OAuthRequest albumsReq = new OAuthRequest(Verb.GET,
@@ -80,7 +99,7 @@ public abstract class ImgurExample
 			service.signRequest(accessToken, albumsReq);
 			final Response albumsRes = albumsReq.send();
 			System.out.println(albumsRes.getCode());
-
+		
 			JSONParser parser = new JSONParser();
 			JSONObject res = (JSONObject) parser.parse(albumsRes.getBody());
 
@@ -92,5 +111,53 @@ public abstract class ImgurExample
 		} catch (ParseException e) {
 			e.printStackTrace();
 		}
+	}
+	
+	private static String getPinFromPage (OAuth20Service service, String authURL,
+			String apiKey){
+		URL url;
+	    InputStream inputS = null;
+	    BufferedReader reader;
+	    String line;
+	    String res = "";
+	    //token url
+	    String myUrl =
+	    "https://api.imgur.com/oauth2/authorize?client_id=ae169aff6383f6f&response_type=token";
+	 
+	    // imgur reply to https://api.imgur.com/oauth2/authorize
+	    // {"data":{"error":"client_id and response_type are required",
+	    //"request":"\/oauth2\/authorize","method":"GET"},"success":false,"status":400}
+	    try {
+	        url = new URL(myUrl);
+	        
+	        
+	        URLConnection con =  url.openConnection();
+	        ((HttpURLConnection) con).setInstanceFollowRedirects(false);
+	        con.setRequestProperty("Authorization", "Client-ID " + apiKey);
+	        res = con.getHeaderField("Set-Cookie").split(";")[0];
+	        System.out.println(con.getHeaderFields());
+	        
+	        			
+			
+	        inputS = con.getInputStream();  // throws an IOException
+	        // ler uma pagina inteira, a partir do codigo fonte
+	        // util para quando o response_type = pin
+	       /* reader = new BufferedReader(new InputStreamReader(inputS));
+	        line = reader.readLine();
+	        while (line != null) {
+	        	System.out.println(line);
+	            if(line.contains("http://imgur.com/oauth2/pin?")){
+	            	res = (line.split("\"")[1]).split("pin=")[1];
+	            	System.out.println(res + " got this from reading");
+	            	break;
+	            }
+	            line = reader.readLine();
+	        }*/
+	    } catch (Exception e){
+	    	e.printStackTrace();
+	    }
+	    System.out.println("res " + res);
+		return res.substring(16);
+		
 	}
 }
