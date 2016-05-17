@@ -5,6 +5,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 
 
@@ -20,23 +21,56 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 
+import org.json.simple.JSONArray;
+import org.json.simple.JSONObject;
+import org.json.simple.parser.JSONParser;
+import org.json.simple.parser.ParseException;
+
+import com.github.scribejava.core.model.OAuth2AccessToken;
+import com.github.scribejava.core.model.OAuthRequest;
+import com.github.scribejava.core.model.Verb;
+import com.github.scribejava.core.oauth.OAuth20Service;
+
 
 @Path("/RESTServer")
-public class ServerResource {
+public class ProxyResource {
 	
 	static File basePath;
+	
+	
+	private com.github.scribejava.core.model.Response buildReq(String url, OAuth20Service service, OAuth2AccessToken at, Verb v){
+		OAuthRequest request = new OAuthRequest(v, url, service);
+		service.signRequest(at, request);
+		return request.send();
+	}
+	
+	
+	
 	
 	//works
 	@GET
 	@Path("getPictureList/{albumName}")
 	@Produces(MediaType.APPLICATION_JSON)
 	@Consumes(MediaType.APPLICATION_JSON)
-	public Response getPictureList(@PathParam("albumName") String albumName){
+	public Response getPictureList(@PathParam("albumName") String albumName,OAuth20Service service, OAuth2AccessToken at){
 		// fazer pedido a proxy para listar os albums do user
-		File f = new File(basePath,albumName);
-		if(f.exists() && f.isDirectory())
-			return Response.ok(f.list()).build();
-		
+		String url = ""; // TODO: preencher url
+		com.github.scribejava.core.model.Response albumsRes = buildReq(url,service,at, Verb.GET);
+		JSONObject res = null;
+		List<String> albumNames = new ArrayList<String>();
+		try {
+			JSONParser parser = new JSONParser();
+	
+			res = (JSONObject) parser.parse(albumsRes.getBody());
+			JSONArray albums = (JSONArray) res.get("data");
+			for(Object album: albums)
+				albumNames.add(((JSONObject) album).get("id") +""+((JSONObject) album).get("title") );
+			
+			return Response.ok(albumNames).build();
+		} catch (ParseException e) {
+			e.printStackTrace();
+		}
+
 		return Response.status(Status.NOT_FOUND).build();
 			
 		
