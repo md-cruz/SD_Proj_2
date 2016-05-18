@@ -1,5 +1,6 @@
 package sd.rest.srv;
 
+import java.io.DataInputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -52,7 +53,8 @@ public class ProxyResource {
 	@Path("getPictureList/{albumName}")
 	@Produces(MediaType.APPLICATION_JSON)
 	@Consumes(MediaType.APPLICATION_JSON)
-	public Response getPictureList(@PathParam("albumName") String albumName,OAuth20Service service, OAuth2AccessToken at){
+	public Response getPictureList(@PathParam("albumName") String albumName,
+			OAuth20Service service, OAuth2AccessToken at){
 		// fazer pedido a proxy para listar os albums do user
 		String url = ""; // TODO: preencher url
 		com.github.scribejava.core.model.Response albumsRes = buildReq(url,service,at, Verb.GET);
@@ -79,37 +81,26 @@ public class ProxyResource {
 	@POST
 	@Path("createNewAlbum")
 	@Consumes(MediaType.APPLICATION_OCTET_STREAM)
-	public Response createNewAlbum(String albumName){
-		// criar um novo album vazio atraves da proxy
-		File newAlbum = new File(basePath,albumName);
-		boolean result = false;
-		try{
-			result = newAlbum.mkdirs();
-		}catch(SecurityException e){
-			
-		}
-		if(result)
-			return Response.ok(true).build();
+	public Response createNewAlbum(String albumName,
+			OAuth20Service service, OAuth2AccessToken at){
+		String url = ""; // TODO: preencher url
+		com.github.scribejava.core.model.Response createRes = buildReq(url,service,at, Verb.POST);
+		boolean ok = 200 == createRes.getCode();
+		if(ok)
+			return Response.ok().build();
 		return Response.status(Status.NOT_FOUND).build();
  
 	}
 	
 	@DELETE
 	@Path("deleteAlbum/{albumName}")
-	public Response deleteAlbum(@PathParam("albumName")String albumName)  {
-		
-		File deletedAlbum = new File(basePath,albumName);
-		if(deletedAlbum.exists() && deletedAlbum.isDirectory()){
-			File del = new File(deletedAlbum.getAbsolutePath() + ".deleted");
-			if(del.exists() && del.isDirectory()){
-				copyData(deletedAlbum,del);
-				deletedAlbum.delete();
-				
-			}else
-				deletedAlbum.renameTo(del);
-			
+	public Response deleteAlbum(@PathParam("albumName")String albumName,
+			OAuth20Service service, OAuth2AccessToken at)  {
+		String url = ""; // TODO: preencher url
+		com.github.scribejava.core.model.Response delRes = buildReq(url,service,at, Verb.DELETE);
+		boolean ok = 200 == delRes.getCode();
+		if(ok)
 			return Response.ok().build();
-		}
 		return Response.status(Status.NOT_FOUND).build();
 		
 	}
@@ -134,15 +125,31 @@ public class ProxyResource {
 	@GET
 	@Path("downloadPicture/{albumName}/{pictureName}")
 	@Produces(MediaType.APPLICATION_OCTET_STREAM)
-	public Response downloadPicture (@PathParam("albumName")String albumName,@PathParam("pictureName")String pictureName){
-		File pic = new File(basePath,albumName+File.separator + pictureName);
-		if(pic.exists() && pic.isFile())
-			try {
-				return Response.ok(Files.readAllBytes(pic.toPath())).build();
-			} catch (IOException e) {
-				System.err.println("Error reading file.");
-				return Response.status(Status.EXPECTATION_FAILED).build();
-			} 
+	public Response downloadPicture (@PathParam("albumName")String albumName,
+			@PathParam("pictureName")String pictureName,
+			OAuth20Service service, OAuth2AccessToken at){
+		String url = ""; // TODO: preencher url
+		com.github.scribejava.core.model.Response picRes = buildReq(url,service,at, Verb.GET);
+		
+		try {
+			JSONParser parser = new JSONParser();
+	
+			JSONObject obj = (JSONObject) parser.parse(picRes.getBody());
+			JSONObject picture = (JSONObject) obj.get("data");
+			com.github.scribejava.core.model.Response imgRes = buildReq((String) picture.get("link"),
+					service,at, Verb.GET);
+			JSONObject pic = (JSONObject) parser.parse(imgRes.getBody());
+			JSONObject picData = (JSONObject) pic.get("data");
+			
+			byte [] data = new byte[Integer.parseInt((String) picData.get("size"))];
+			DataInputStream dataStream = new DataInputStream(imgRes.getStream());
+			dataStream.readFully(data);
+			
+			return Response.ok(data).build();
+		} catch (ParseException | IOException e) {
+			e.printStackTrace();
+		}
+
 		return Response.status(Status.NOT_FOUND).build();
 	}
 	
@@ -150,25 +157,25 @@ public class ProxyResource {
 	@GET
 	@Path("/getAlbumList/")
 	@Produces(MediaType.APPLICATION_JSON)
-	public Response getAlbumList ()  {
-		try{
-		File f = basePath;
-		if(f.exists() && f.isDirectory()){
-			File[] albums = f.listFiles(); 
-			List<String> albumsAsStrings = new ArrayList<String>();
-			for(int i =0; i<albums.length;i++)
-				if(albums[i].isDirectory())
-					albumsAsStrings.add(albums[i].getName());
-			String[] albumsStringArray = new String[albumsAsStrings.size()];
-			albumsStringArray = albumsAsStrings.toArray(albumsStringArray);
-			return Response.ok(albumsStringArray).build();
-		}
-		else
-			return Response.status(Status.NOT_FOUND).build();
-		}catch(Exception e){
-			System.out.println("exceptiones");
-		}
-		return null;
+	public Response getAlbumList (OAuth20Service service, OAuth2AccessToken at)  {
+		// fazer pedido a proxy para listar os albums do user
+				String url = ""; // TODO: preencher url
+				com.github.scribejava.core.model.Response albumsRes = buildReq(url,service,at, Verb.GET);
+				JSONObject res = null;
+				List<String> albumNames = new ArrayList<String>();
+				try {
+					JSONParser parser = new JSONParser();
+			
+					res = (JSONObject) parser.parse(albumsRes.getBody());
+					JSONArray albums = (JSONArray) res.get("data");
+					for(Object album: albums)
+						albumNames.add(((JSONObject) album).get("id") +""+((JSONObject) album).get("title") );
+					
+					return Response.ok(albumNames).build();
+				} catch (ParseException e) {
+					e.printStackTrace();
+				}
+				return Response.status(Status.NOT_FOUND).build();
 	}
 	@DELETE
 	@Path("deletePicture/{albumName}/{pictureName}")

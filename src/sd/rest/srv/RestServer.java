@@ -36,6 +36,7 @@ public class RestServer {
 	
 		config.register(ServerResource.class);
 		
+		
 		HttpServer server = JdkHttpServerFactory.createHttpServer(baseUri, config);
 
 		System.err.println("REST Server ready... ");
