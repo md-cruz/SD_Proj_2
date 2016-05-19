@@ -85,7 +85,7 @@ public class ProxyServer {
 		
 		HttpServer server = JdkHttpServerFactory.createHttpServer(baseUri, config);
 
-		System.err.println("REST Server ready... ");
+		System.err.println("REST Proxy ready... ");
 		
 		answerMulticast(url);
 		
@@ -104,11 +104,9 @@ public class ProxyServer {
 		}
 	}
 
-	private static void answerMulticast(String localhost) {
-
-		
+	private static void answerMulticast(String localhost) {		
 			try {
-				final String addr = "228.0.0.1";
+				final String addr = "229.0.0.1";
 				System.out.println("new thread launched");
 
 				final InetAddress address = InetAddress.getByName(addr);

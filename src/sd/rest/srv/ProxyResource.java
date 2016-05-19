@@ -34,7 +34,7 @@ import com.github.scribejava.core.model.OAuthRequest;
 import com.github.scribejava.core.model.Verb;
 import com.github.scribejava.core.oauth.OAuth20Service;
 
-@Path("/RESTServer")
+@Path("/RESTProxy")
 public class ProxyResource {
 
 	static File basePath;
@@ -136,7 +136,8 @@ public class ProxyResource {
 
 			JSONObject obj = (JSONObject) parser.parse(picRes.getBody());
 			JSONObject picture = (JSONObject) obj.get("data");
-			com.github.scribejava.core.model.Response imgRes = buildReq((String) picture.get("link"), Verb.GET, null);
+			com.github.scribejava.core.model.Response imgRes = buildReq((String) picture.get("link"),
+					Verb.GET, null);
 			JSONObject pic = (JSONObject) parser.parse(imgRes.getBody());
 			JSONObject picData = (JSONObject) pic.get("data");
 
@@ -195,7 +196,7 @@ public class ProxyResource {
 
 		String url = "https://api.imgur.com/3/image"; 
 		Map<String,String> params = new HashMap<String,String>();
-		params.put("image", Base64.encodeBase64String(data));
+		params.put("image", Base64.encodeBase64URLSafeString(data));
 		params.put("album", albumName);
 		params.put("title", pictureName);
 		com.github.scribejava.core.model.Response createRes = buildReq(url, Verb.PUT,params);

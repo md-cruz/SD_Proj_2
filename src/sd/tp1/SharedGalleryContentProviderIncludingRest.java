@@ -384,7 +384,6 @@ public class SharedGalleryContentProviderIncludingRest implements GalleryContent
 
 		for (int j = 0; j < 3 && !done; j++) {
 			WebTarget target = client.target(getBaseURI(serverUrl));
-			System.out.println(serverUrl);
 			Builder replyB = target.path("RESTServer/downloadPicture/" + album.getName() +"/"+ picture.getName())
 					.request().accept(MediaType.APPLICATION_OCTET_STREAM);
 			Response reply = replyB.get();
@@ -483,7 +482,6 @@ public class SharedGalleryContentProviderIncludingRest implements GalleryContent
 
 		for (int j = 0; j < 3 && !done; j++) {
 			WebTarget target = client.target(getBaseURI(serverUrl));
-			System.out.println(serverUrl);
 			Response replyB = target.path("RESTServer/createNewAlbum/")
 					.request().post(Entity.entity(name, MediaType.APPLICATION_OCTET_STREAM));
 			
@@ -558,7 +556,6 @@ public class SharedGalleryContentProviderIncludingRest implements GalleryContent
 
 		for (int j = 0; j < 3 && !done; j++) {
 			WebTarget target = client.target(getBaseURI(serverUrl));
-			System.out.println(serverUrl);
 			Response replyB = target.path("RESTServer/deleteAlbum/" + album.getName())
 					.request().delete();
 			if (replyB.getStatusInfo().equals(Status.OK)) {
