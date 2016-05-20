@@ -47,31 +47,34 @@ import sd.tp1.gui.impl.GalleryWindow;
  * Project 1 implementation should complete this class. 
  */
 
-
-
-
 public class SharedGalleryContentProviderIncludingRest implements GalleryContentProvider {
 
-	Gui gui;
-	List<String> servers;
+	private Gui gui;
+	private List<String> servers;
+	private List<String> proxies;
 	private static final String MULTICASTIP = "228.0.0.1";
+	private static final String WSERVICEP = "ImAProxy";
 	private static final int PORT = 9000;
 	private static final char SOAP = 'S';
 	private static final char REST = 'R';
 	private Client client;
+	private boolean syncingDir;
 
 	SharedGalleryContentProviderIncludingRest() {
 		servers = new CopyOnWriteArrayList<String>();
+		proxies = new CopyOnWriteArrayList<String>();
 		getServers();
+		getProxies();
 		ClientConfig config = new ClientConfig();
-	   	this.client = ClientBuilder.newClient(config);
+		this.client = ClientBuilder.newClient(config);
+		syncingDir = false;
 		// gui = new GalleryWindow(this);
 	}
 
 	private URI getBaseURI(String serverUrl) {
-	    return UriBuilder.fromUri(serverUrl).port(9090).build();
-	  }
-	
+		return UriBuilder.fromUri(serverUrl).port(9090).build();
+	}
+
 	// also checks if the servers are alive
 	private void getServers() {
 		new Thread(() -> {
@@ -87,11 +90,9 @@ public class SharedGalleryContentProviderIncludingRest implements GalleryContent
 				DatagramPacket packet = new DatagramPacket(input, input.length);
 				packet.setAddress(address);
 				packet.setPort(port);
-				Map<String,Integer> consecutiveReplies = new HashMap<String,Integer>();
+				Map<String, Integer> consecutiveReplies = new HashMap<String, Integer>();
 				int numberOfQueries = 0;
 
-			
-			    
 				while (true) {
 					System.out.println("Sent packet");
 					socket.send(packet);
@@ -102,16 +103,16 @@ public class SharedGalleryContentProviderIncludingRest implements GalleryContent
 					boolean foundAllServers = false;
 					try {
 						while (!foundAllServers) {
-							
+
 							socket.setSoTimeout(60000);
 
 							socket.receive(receivedPacket);
 
 							String serverHost = new String(receivedPacket.getData()).trim();
-							consecutiveReplies.put(serverHost,
-									consecutiveReplies.getOrDefault(serverHost, 1)+1); 
-									//getOrDefault returns the current value for the key
-									// or 1 if the key has no value yet
+							consecutiveReplies.put(serverHost, consecutiveReplies.getOrDefault(serverHost, 1) + 1);
+							// getOrDefault returns the current value for the
+							// key
+							// or 1 if the key has no value yet
 							System.out.println(serverHost);
 							if (!servers.contains(serverHost))
 								servers.add(serverHost);
@@ -119,15 +120,78 @@ public class SharedGalleryContentProviderIncludingRest implements GalleryContent
 					} catch (SocketTimeoutException e) {
 						foundAllServers = true;
 					}
-					
+
 					// delete servers if they havent replied in the last 3 times
-					for(String server : consecutiveReplies.keySet()){
-						if (consecutiveReplies.get(server) +3 < numberOfQueries){
+					for (String server : consecutiveReplies.keySet()) {
+						if (consecutiveReplies.get(server) + 3 < numberOfQueries) {
 							// remove server
 							servers.remove(server);
 						}
 					}
-					
+
+					Thread.sleep(60000); // esperar um minuto e executar novo
+											// multicast
+				}
+
+			} catch (Exception e) {
+				e.printStackTrace();
+
+			}
+		}).start();
+	}
+
+	private void getProxies() {
+		new Thread(() -> {
+			try {
+
+				final int port = PORT;
+				final String addr = MULTICASTIP;
+				final InetAddress address = InetAddress.getByName(addr);
+
+				MulticastSocket socket = new MulticastSocket();
+
+				byte[] input = (WSERVICEP).getBytes();
+				DatagramPacket packet = new DatagramPacket(input, input.length);
+				packet.setAddress(address);
+				packet.setPort(port);
+				Map<String, Integer> consecutiveReplies = new HashMap<String, Integer>();
+				int numberOfQueries = 0;
+
+				while (true) {
+					System.out.println("Sent packet");
+					socket.send(packet);
+					// System.out.println(new String(packet.getData()));
+					numberOfQueries++;
+					byte[] received = new byte[65536];
+					DatagramPacket receivedPacket = new DatagramPacket(received, received.length);
+					boolean foundAllServers = false;
+					try {
+						while (!foundAllServers) {
+
+							socket.setSoTimeout(60000);
+
+							socket.receive(receivedPacket);
+
+							String serverHost = new String(receivedPacket.getData()).trim();
+							consecutiveReplies.put(serverHost, consecutiveReplies.getOrDefault(serverHost, 1) + 1);
+							// getOrDefault returns the current value for the
+							// key
+							// or 1 if the key has no value yet
+							if (!proxies.contains(serverHost))
+								proxies.add(serverHost);
+						}
+					} catch (SocketTimeoutException e) {
+						foundAllServers = true;
+					}
+
+					// delete servers if they havent replied in the last 3 times
+					for (String server : consecutiveReplies.keySet()) {
+						if (consecutiveReplies.get(server) + 3 < numberOfQueries) {
+							// remove server
+							proxies.remove(server);
+						}
+					}
+
 					Thread.sleep(60000); // esperar um minuto e executar novo
 											// multicast
 				}
@@ -149,7 +213,7 @@ public class SharedGalleryContentProviderIncludingRest implements GalleryContent
 			this.gui = gui;
 		}
 	}
-	
+
 	private String extractID(String name) {
 		return name.split(".")[0];
 	}
@@ -164,36 +228,77 @@ public class SharedGalleryContentProviderIncludingRest implements GalleryContent
 		List<Album> tmp = new ArrayList<Album>();
 
 		for (String serverUrl : servers) {
-			try{
-				if(serverUrl.charAt(0)==(SOAP))
+			try {
+				if (serverUrl.charAt(0) == (SOAP))
 					tmp = (soapListOfAlbums(serverUrl.substring(1)));
-				else if(serverUrl.charAt(0) == REST)
+				else if (serverUrl.charAt(0) == REST)
 					tmp = (restListOfAlbums(serverUrl.substring(1)));
-				for(Album a : tmp)
-					if(!lst.contains(a))
+				for (Album a : tmp)
+					if (!lst.contains(a))
 						lst.add(a);
-			}catch (Exception e){
+			} catch (Exception e) {
 				e.printStackTrace();
-				
+
 				System.out.println("Server currently unavailable.");
 			}
 		}
+		// escolher proxy aleatoriamente
+		Random r = new Random();
+		String proxyUrl = proxies.get(r.nextInt(proxies.size()));
+		Set<Album> albSet = new HashSet<Album>(imgurListOfAlbums(proxyUrl));
+		if (!lst.containsAll(albSet)) {
+			for (Album alb : albSet) {
+				if (!lst.contains(alb))
+					lst.add(alb);
+			}
+		}
+
 		return lst;
 	}
-	
-	private List<Album> imgurListOfAlbums (String proxyUrl) {
+
+	private void syncProxyServer() {
+
+		// ********* sincronizacao de albuns *************
+		// colocar flag de sync a serveralbs
+		// ir buscar lista l1 de albuns nos servidores locais
+		// colocar flag de sync a imguralbs
+		// ir buscar lista l2 de albuns no imgur
+		// comparar as listas
+		// caso faltem albuns a l1
+		// colocar flag de sync a addlocalalb
+		// criar os albuns nos servidores
+		// caso faltem albuns a l2
+		// colocar flag de sync a addimguralb
+		// criar os albuns no imgur
+
+		// ******** sincronizacao de pictures **********
+		// colocar flag de sync a serverpiclist
+		// ir buscar lista l1 de pictures nos servidores locais
+		// colocar flag de sync a imgurpiclist
+		// ir buscar lista l2 de pictures no imgur
+		// comparar as listas
+		// caso faltem pictures a l1
+		// colocar flag de sync a addlocalpic
+		// adicionar novas fotografias aos servidores
+		// caso faltem pictures a l2
+		// colocar flag de sync a addimgurpic
+		// adicionar novas fotografias ao imgur
+		// colocar flag de sync a synced
+
+	}
+
+	private List<Album> imgurListOfAlbums(String proxyUrl) {
 		boolean done = false;
 		List<Album> lst = new ArrayList<Album>();
 		for (int j = 0; j < 3 && !done; j++) {
-			
+
 			WebTarget target = client.target(getBaseURI(proxyUrl));
-		
+
 			String[] albumNames;
-			Builder replyB = target.path("RESTProxy/getAlbumList/")
-					.request().accept(MediaType.APPLICATION_JSON);
-			
+			Builder replyB = target.path("RESTProxy/getAlbumList/").request().accept(MediaType.APPLICATION_JSON);
+
 			Response reply = replyB.get();
-			
+
 			if (reply.getStatusInfo().equals(Status.OK)) {
 				albumNames = replyB.get(String[].class);
 				for (int i = 0; i < albumNames.length; i++) {
@@ -202,26 +307,25 @@ public class SharedGalleryContentProviderIncludingRest implements GalleryContent
 						lst.add(alb);
 				}
 				done = true;
-			
-			} 
+
+			}
 		}
-			return lst;
+		return lst;
 	}
-	
+
 	private List<Album> restListOfAlbums(String serverUrl) {
 		List<Album> lst = new ArrayList<Album>();
 		boolean done = false;
 
 		for (int j = 0; j < 3 && !done; j++) {
 			WebTarget target = client.target(getBaseURI(serverUrl));
-		
+
 			String[] albumNames;
 			System.out.println(serverUrl);
-			Builder replyB = target.path("RESTServer/getAlbumList/")
-					.request().accept(MediaType.APPLICATION_JSON);
-			
+			Builder replyB = target.path("RESTServer/getAlbumList/").request().accept(MediaType.APPLICATION_JSON);
+
 			Response reply = replyB.get();
-			
+
 			if (reply.getStatusInfo().equals(Status.OK)) {
 				albumNames = replyB.get(String[].class);
 
@@ -231,54 +335,54 @@ public class SharedGalleryContentProviderIncludingRest implements GalleryContent
 						lst.add(alb);
 				}
 				done = true;
-			
-			} 
-			// else try again	
+
+			}
+			// else try again
 		}
 		return lst;
 	}
-	
-	private List<Album> soapListOfAlbums(String serverUrl) throws InfoNotFoundException_Exception, MalformedURLException{
+
+	private List<Album> soapListOfAlbums(String serverUrl)
+			throws InfoNotFoundException_Exception, MalformedURLException {
 		List<Album> lst = new ArrayList<Album>();
-		
-			System.out.println(serverUrl + " listAlbum\n");
-			URL wsURL = new URL(String.format("%s", serverUrl));
-			FileServerImplWSService service = new FileServerImplWSService(wsURL); // wsimport
-			FileServerImplWS server = service.getFileServerImplWSPort();
-			try {
-				List<String> aList = server.getAlbumList();
-				for (String album : aList) {
-					SharedAlbum alb = new SharedAlbum(album);
-					if (!lst.contains(alb)&& !album.endsWith(".deleted"))
-						lst.add(alb);
-				}
-			
-				
-			} catch (Exception e) {
-				// call method again, max 3 times
-				boolean executed = false;
-				for (int i = 0; !executed && i < 3; i++) { // number of
-															// tries
-					try {
-						List<String> aList = server.getAlbumList();
-						for (String album : aList) {
-							SharedAlbum alb = new SharedAlbum(album);
-							if (!lst.contains(alb))
-								lst.add(alb);
-						}
-						executed = true;
-					} catch (RuntimeException e1) {
-						if (i < 2) {
-							try { // wait some time
-								Thread.sleep(5000);
-							} catch (InterruptedException e2) {
-								// do nothing
-							}
+
+		System.out.println(serverUrl + " listAlbum\n");
+		URL wsURL = new URL(String.format("%s", serverUrl));
+		FileServerImplWSService service = new FileServerImplWSService(wsURL); // wsimport
+		FileServerImplWS server = service.getFileServerImplWSPort();
+		try {
+			List<String> aList = server.getAlbumList();
+			for (String album : aList) {
+				SharedAlbum alb = new SharedAlbum(album);
+				if (!lst.contains(alb) && !album.endsWith(".deleted"))
+					lst.add(alb);
+			}
+
+		} catch (Exception e) {
+			// call method again, max 3 times
+			boolean executed = false;
+			for (int i = 0; !executed && i < 3; i++) { // number of
+														// tries
+				try {
+					List<String> aList = server.getAlbumList();
+					for (String album : aList) {
+						SharedAlbum alb = new SharedAlbum(album);
+						if (!lst.contains(alb))
+							lst.add(alb);
+					}
+					executed = true;
+				} catch (RuntimeException e1) {
+					if (i < 2) {
+						try { // wait some time
+							Thread.sleep(5000);
+						} catch (InterruptedException e2) {
+							// do nothing
 						}
 					}
 				}
 			}
-		
+		}
+
 		return lst;
 	}
 
@@ -291,41 +395,41 @@ public class SharedGalleryContentProviderIncludingRest implements GalleryContent
 
 		List<Picture> lst = new ArrayList<Picture>();
 		List<Picture> tmp = new ArrayList<Picture>();
-		
 
 		for (String serverUrl : servers) {
-			try{
+			try {
 				String url = serverUrl.substring(1);
-				if(serverUrl.charAt(0)==(SOAP))
-					tmp = (soapListOfPictures(url,album));
-				else if(serverUrl.charAt(0) == REST)
-					tmp = (restListOfPictures(url,album));
-				for(Picture p : tmp)
-					if(!lst.contains(p))
+				if (serverUrl.charAt(0) == (SOAP))
+					tmp = (soapListOfPictures(url, album));
+				else if (serverUrl.charAt(0) == REST)
+					tmp = (restListOfPictures(url, album));
+				for (Picture p : tmp)
+					if (!lst.contains(p))
 						lst.add(p);
-			}catch (Exception e){
+			} catch (Exception e) {
 				e.printStackTrace();
-				
+
 				System.out.println("Server currently unavailable.");
 			}
 		}
-			
+
 		return lst;
-		}
+	}
+
 	private List<Picture> restListOfPictures(String serverUrl, Album album) {
 		List<Picture> lst = new ArrayList<Picture>();
 		boolean done = false;
 
 		for (int j = 0; j < 3 && !done; j++) {
 			WebTarget target = client.target(getBaseURI(serverUrl));
-		
+
 			String[] pictureNames;
 			System.out.println(serverUrl);
-			Builder replyB = target.path("RESTServer/getPictureList/" + album.getName())
-					.request().accept(MediaType.APPLICATION_JSON);
-			
+			Builder replyB = target.path("RESTServer/getPictureList/" + album.getName()).request()
+					.accept(MediaType.APPLICATION_JSON);
+
 			Response reply = replyB.get();
-			
+
 			if (reply.getStatusInfo().equals(Status.OK)) {
 				pictureNames = replyB.get(String[].class);
 
@@ -335,19 +439,19 @@ public class SharedGalleryContentProviderIncludingRest implements GalleryContent
 						lst.add(pic);
 				}
 				done = true;
-			
-			} 
-			// else try again	
+
+			}
+			// else try again
 		}
 		return lst;
 	}
-	
-	private List<Picture> imgurListOfPictures (String proxyUrl, Album album){
+
+	private List<Picture> imgurListOfPictures(String proxyUrl, Album album) {
 		List<Picture> lst = new ArrayList<Picture>();
 		boolean done = false;
 
 		for (int j = 0; j < 3 && !done; j++) {
-			
+
 			WebTarget target = client.target(getBaseURI(proxyUrl));
 
 			String[] pictureNames;
@@ -361,10 +465,10 @@ public class SharedGalleryContentProviderIncludingRest implements GalleryContent
 			if (reply.getStatusInfo().equals(Status.OK)) {
 				pictureNames = replyB.get(String[].class);
 				for (int i = 0; i < pictureNames.length; i++) {
-				SharedPicture pic = new SharedPicture(pictureNames[i]);
-				if (!lst.contains(pic) && !pic.getName().endsWith(".deleted"))
-					lst.add(pic);
-				done = true;
+					SharedPicture pic = new SharedPicture(pictureNames[i]);
+					if (!lst.contains(pic) && !pic.getName().endsWith(".deleted"))
+						lst.add(pic);
+					done = true;
 				}
 
 			}
@@ -376,7 +480,7 @@ public class SharedGalleryContentProviderIncludingRest implements GalleryContent
 	private List<Picture> soapListOfPictures(String serverUrl, Album album) {
 		List<Picture> lst = new ArrayList<Picture>();
 
-		try{
+		try {
 			System.out.println(serverUrl + " listPicture\n");
 			URL wsURL = new URL(String.format("%s", serverUrl));
 			FileServerImplWSService service = new FileServerImplWSService(wsURL);
@@ -385,7 +489,7 @@ public class SharedGalleryContentProviderIncludingRest implements GalleryContent
 				List<String> picList = server.getPictureList(album.getName());
 				for (String pic : picList) {
 					SharedPicture picture = new SharedPicture(pic);
-					if (!lst.contains(picture)&& !pic.endsWith(".deleted"))
+					if (!lst.contains(picture) && !pic.endsWith(".deleted"))
 						lst.add(picture);
 				}
 			} catch (Exception e) {
@@ -412,12 +516,11 @@ public class SharedGalleryContentProviderIncludingRest implements GalleryContent
 					}
 				}
 			}
-		}catch(Exception e){
+		} catch (Exception e) {
 			e.printStackTrace();
 		}
-			return lst;
-		}
-	
+		return lst;
+	}
 
 	/**
 	 * Returns the contents of picture in album. On error this method should
@@ -426,30 +529,29 @@ public class SharedGalleryContentProviderIncludingRest implements GalleryContent
 	@Override
 	public byte[] getPictureData(Album album, Picture picture) {
 		byte[] pictureData = null;
-		
+
 		for (String serverUrl : servers) {
-			try{
-				if(serverUrl.charAt(0)==(SOAP))
-					pictureData = soapGetPicData(serverUrl.substring(1),album,picture);
-				else if(serverUrl.charAt(0) == REST) 
-					pictureData = restGetPicData(serverUrl.substring(1),album,picture);
+			try {
+				if (serverUrl.charAt(0) == (SOAP))
+					pictureData = soapGetPicData(serverUrl.substring(1), album, picture);
+				else if (serverUrl.charAt(0) == REST)
+					pictureData = restGetPicData(serverUrl.substring(1), album, picture);
 				break;
-			}catch (Exception e){
+			} catch (Exception e) {
 				e.printStackTrace();
-				
+
 				System.out.println("Server currently unavailable.");
 			}
 		}
 		return pictureData;
 	}
 
-	
-	private byte[] imgurGetPicData (String proxyUrl, Picture picture) {
+	private byte[] imgurGetPicData(String proxyUrl, Picture picture) {
 		byte[] pictureData = null;
 		boolean done = false;
 
 		for (int j = 0; j < 3 && !done; j++) {
-		
+
 			WebTarget target = client.target(getBaseURI(proxyUrl));
 			// extrair ID da fotografia antes do request
 			String pictureID = extractID(picture.getName());
@@ -465,22 +567,22 @@ public class SharedGalleryContentProviderIncludingRest implements GalleryContent
 		}
 		return pictureData;
 	}
-	
+
 	private byte[] restGetPicData(String serverUrl, Album album, Picture picture) {
 		byte[] pictureData = null;
 		boolean done = false;
 
 		for (int j = 0; j < 3 && !done; j++) {
 			WebTarget target = client.target(getBaseURI(serverUrl));
-			Builder replyB = target.path("RESTServer/downloadPicture/" + album.getName() +"/"+ picture.getName())
+			Builder replyB = target.path("RESTServer/downloadPicture/" + album.getName() + "/" + picture.getName())
 					.request().accept(MediaType.APPLICATION_OCTET_STREAM);
 			Response reply = replyB.get();
 			if (reply.getStatusInfo().equals(Status.OK)) {
-				pictureData= replyB.get(byte[].class);
+				pictureData = replyB.get(byte[].class);
 				done = true;
-			
-			} 
-			// else try again	
+
+			}
+			// else try again
 		}
 		return pictureData;
 	}
@@ -512,8 +614,7 @@ public class SharedGalleryContentProviderIncludingRest implements GalleryContent
 					}
 				}
 			}
-		}
-		catch (Exception e) {
+		} catch (Exception e) {
 			e.printStackTrace();
 			// System.out.println("Server " + serverUrl + " may be down, client
 			// will remove"
@@ -530,34 +631,33 @@ public class SharedGalleryContentProviderIncludingRest implements GalleryContent
 		int i = 0;
 		int times = 0;
 		Album album = null;
-		try{
-		final int[] serverIndexes = new Random().ints(0, servers.size()).distinct().limit(servers.size()).toArray();
-		
-		boolean finished = false;
-		
-		
-		while (!finished && i < serverIndexes.length && serverIndexes[i] < servers.size()) {
-			try{
-				String serverUrl = servers.get(serverIndexes[i]);
-				i++;
-				if(serverUrl.charAt(0)==(SOAP))
-					album = soapCreateAlbum(serverUrl.substring(1),name);
-				else if(serverUrl.charAt(0) == REST)
-					album = restCreateAlbum(serverUrl.substring(1),name);
-				finished = true;
-			}catch (Exception e) {
-				
-				if (i >= servers.size()) {
-					if (times < 2) {
-						i = 0;
-						times++;
-					} else
-						break;
+		try {
+			final int[] serverIndexes = new Random().ints(0, servers.size()).distinct().limit(servers.size()).toArray();
+
+			boolean finished = false;
+
+			while (!finished && i < serverIndexes.length && serverIndexes[i] < servers.size()) {
+				try {
+					String serverUrl = servers.get(serverIndexes[i]);
+					i++;
+					if (serverUrl.charAt(0) == (SOAP))
+						album = soapCreateAlbum(serverUrl.substring(1), name);
+					else if (serverUrl.charAt(0) == REST)
+						album = restCreateAlbum(serverUrl.substring(1), name);
+					finished = true;
+				} catch (Exception e) {
+
+					if (i >= servers.size()) {
+						if (times < 2) {
+							i = 0;
+							times++;
+						} else
+							break;
+					}
 				}
 			}
-		}
-		
-		}catch (IllegalArgumentException e){
+
+		} catch (IllegalArgumentException e) {
 			System.out.println("No servers connected right now");
 		}
 		System.out.println(album);
@@ -570,24 +670,24 @@ public class SharedGalleryContentProviderIncludingRest implements GalleryContent
 
 		for (int j = 0; j < 3 && !done; j++) {
 			WebTarget target = client.target(getBaseURI(serverUrl));
-			Response replyB = target.path("RESTServer/createNewAlbum/")
-					.request().post(Entity.entity(name, MediaType.APPLICATION_OCTET_STREAM));
-			
+			Response replyB = target.path("RESTServer/createNewAlbum/").request()
+					.post(Entity.entity(name, MediaType.APPLICATION_OCTET_STREAM));
+
 			if (replyB.getStatusInfo().equals(Status.OK)) {
 				done = true;
-			} 
-			// else try again	
+			}
+			// else try again
 		}
-		if(!done)
+		if (!done)
 			return null;
 		return alb;
 	}
-	
-	private boolean imgurCreateAlbum (String proxyUrl, String albumName){
+
+	private boolean imgurCreateAlbum(String proxyUrl, String albumName) {
 		boolean done = false;
 
 		for (int j = 0; j < 3 && !done; j++) {
-			
+
 			WebTarget target = client.target(getBaseURI(proxyUrl));
 			Response replyB = target.path("RESTProxy/createNewAlbum/").request()
 					.post(Entity.entity(albumName, MediaType.APPLICATION_OCTET_STREAM));
@@ -601,7 +701,6 @@ public class SharedGalleryContentProviderIncludingRest implements GalleryContent
 	}
 
 	private Album soapCreateAlbum(String serverUrl, String name) throws MalformedURLException {
-
 
 		boolean finished = false;
 
@@ -641,26 +740,25 @@ public class SharedGalleryContentProviderIncludingRest implements GalleryContent
 	@Override
 	public void deleteAlbum(Album album) {
 
-		
 		for (String serverUrl : servers) {
-			try{
-				if(serverUrl.charAt(0)==(SOAP))
-					soapDeleteAlbum(serverUrl.substring(1),album);
-				else if(serverUrl.charAt(0) == REST) // TODO: Rest method
-					restDeleteAlbum(serverUrl.substring(1),album);
+			try {
+				if (serverUrl.charAt(0) == (SOAP))
+					soapDeleteAlbum(serverUrl.substring(1), album);
+				else if (serverUrl.charAt(0) == REST) // TODO: Rest method
+					restDeleteAlbum(serverUrl.substring(1), album);
 				break;
-			}catch (Exception e){
+			} catch (Exception e) {
 				e.printStackTrace();
 				System.out.println("Server currently unavailable.");
 			}
 		}
 	}
-	
-	private boolean imgurDeleteAlbum (String proxyUrl, Album album){
+
+	private boolean imgurDeleteAlbum(String proxyUrl, Album album) {
 		boolean done = false;
 
 		for (int j = 0; j < 3 && !done; j++) {
-			
+
 			WebTarget target = client.target(getBaseURI(proxyUrl));
 			// extrair id do albumName
 			String albumID = extractID(album.getName());
@@ -672,23 +770,22 @@ public class SharedGalleryContentProviderIncludingRest implements GalleryContent
 		}
 		return done;
 	}
-	
 
 	private void restDeleteAlbum(String serverUrl, Album album) {
 		boolean done = false;
 
 		for (int j = 0; j < 3 && !done; j++) {
 			WebTarget target = client.target(getBaseURI(serverUrl));
-			Response replyB = target.path("RESTServer/deleteAlbum/" + album.getName())
-					.request().delete();
+			Response replyB = target.path("RESTServer/deleteAlbum/" + album.getName()).request().delete();
 			if (replyB.getStatusInfo().equals(Status.OK)) {
 				done = true;
-			} 
-			// else try again	
+			}
+			// else try again
 		}
 	}
 
-	private void  soapDeleteAlbum(String serverUrl, Album album) throws MalformedURLException, InfoNotFoundException_Exception {
+	private void soapDeleteAlbum(String serverUrl, Album album)
+			throws MalformedURLException, InfoNotFoundException_Exception {
 
 		System.out.println(serverUrl + " deleteAlbum\n");
 		URL wsURL = new URL(String.format("%s", serverUrl));
@@ -729,107 +826,104 @@ public class SharedGalleryContentProviderIncludingRest implements GalleryContent
 		int i = 0;
 		int times = 0;
 		Picture pic = null;
-		try{
+		try {
 			boolean finished = false;
-		final int[] serverIndexes = new Random().ints(0, servers.size()).distinct().limit(servers.size()).toArray();
-		while (!finished && i < serverIndexes.length && serverIndexes[i] < servers.size()) {
-			try{
-				String serverUrl = servers.get(serverIndexes[i]);
-				i++;
-				if(serverUrl.charAt(0)==(SOAP))
-					pic = soapUploadPic(serverUrl.substring(1),album,name,data);
-				else if(serverUrl.charAt(0) == REST)
-					pic = restUploadPic(serverUrl.substring(1),album,name,data);
-				finished = true;
-			}catch (Exception e) {
-				
-				if (i >= servers.size()) {
-					if (times < 2) {
-						i = 0;
-						times++;
-					} else
-						break;
+			final int[] serverIndexes = new Random().ints(0, servers.size()).distinct().limit(servers.size()).toArray();
+			while (!finished && i < serverIndexes.length && serverIndexes[i] < servers.size()) {
+				try {
+					String serverUrl = servers.get(serverIndexes[i]);
+					i++;
+					if (serverUrl.charAt(0) == (SOAP))
+						pic = soapUploadPic(serverUrl.substring(1), album, name, data);
+					else if (serverUrl.charAt(0) == REST)
+						pic = restUploadPic(serverUrl.substring(1), album, name, data);
+					finished = true;
+				} catch (Exception e) {
+
+					if (i >= servers.size()) {
+						if (times < 2) {
+							i = 0;
+							times++;
+						} else
+							break;
+					}
 				}
 			}
-		}
-		
-		}catch (IllegalArgumentException e){
+
+		} catch (IllegalArgumentException e) {
 			System.out.println("No servers connected right now");
 		}
-		
+
 		return pic;
 	}
-	
-	
-	private Picture imgurUploadPic (String proxyUrl, Album album, String picName, byte[] data){
+
+	private Picture imgurUploadPic(String proxyUrl, Album album, String picName, byte[] data) {
 		boolean done = false;
 		for (int j = 0; j < 3 && !done; j++) {
-			
+
 			WebTarget target = client.target(getBaseURI(proxyUrl));
-			
-			Response replyB = target.path("RESTProxy/uploadPicture/"
-			+ album.getName() +"/"+ picName)
-					.request().post( Entity.entity(data, MediaType.APPLICATION_OCTET_STREAM));
-		
+
+			Response replyB = target.path("RESTProxy/uploadPicture/" + album.getName() + "/" + picName).request()
+					.post(Entity.entity(data, MediaType.APPLICATION_OCTET_STREAM));
+
 			if (replyB.getStatusInfo().equals(Status.OK)) {
 				done = true;
-			
-			} 
-			// else try again	
+
+			}
+			// else try again
 		}
-		if(done)
+		if (done)
 			return new SharedPicture(picName);
 		return null;
 	}
 
 	private Picture restUploadPic(String serverUrl, Album album, String name, byte[] data) {
-		
+
 		boolean done = false;
 		for (int j = 0; j < 3 && !done; j++) {
 			WebTarget target = client.target(getBaseURI(serverUrl));
 			System.out.println("hi");
-			
-			Response replyB = target.path("RESTServer/uploadPicture/"
-			+ album.getName() +"/"+ name)
-					.request().post( Entity.entity(data, MediaType.APPLICATION_OCTET_STREAM));
-		
+
+			Response replyB = target.path("RESTServer/uploadPicture/" + album.getName() + "/" + name).request()
+					.post(Entity.entity(data, MediaType.APPLICATION_OCTET_STREAM));
+
 			if (replyB.getStatusInfo().equals(Status.OK)) {
 				done = true;
-			
-			} 
-			// else try again	
+
+			}
+			// else try again
 		}
-		if(!done)
+		if (!done)
 			return null;
 		return new SharedPicture(name);
-			
+
 	}
 
-	private Picture soapUploadPic(String serverUrl, Album album, String name, byte[] data) throws IOException_Exception, InfoNotFoundException_Exception, MalformedURLException {
+	private Picture soapUploadPic(String serverUrl, Album album, String name, byte[] data)
+			throws IOException_Exception, InfoNotFoundException_Exception, MalformedURLException {
 		boolean finished = false;
-		
+
 		System.out.println(serverUrl + " uploadPicture\n");
-		
+
 		URL wsURL = new URL(String.format("%s", serverUrl));
 
 		FileServerImplWSService service = new FileServerImplWSService(wsURL);
 		FileServerImplWS server = service.getFileServerImplWSPort();
 		try {
-			server.uploadPicture(album.getName() +File.separator+ name, data);
+			server.uploadPicture(album.getName() + File.separator + name, data);
 			finished = true;
-		}catch(PictureExistsException_Exception e){
+		} catch (PictureExistsException_Exception e) {
 			return null;
-		}catch (Exception e) {
+		} catch (Exception e) {
 			// call method again, max 3 times
 			for (int j = 0; !finished && j < 3; j++) { // number of
 														// tries
 				try {
-					server.uploadPicture(album.getName() +File.separator+ name, data);
+					server.uploadPicture(album.getName() + File.separator + name, data);
 					finished = true;
-				}catch(PictureExistsException_Exception e2){
+				} catch (PictureExistsException_Exception e2) {
 					return null;
-				}
-				catch (RuntimeException e1) {
+				} catch (RuntimeException e1) {
 					if (j < 2) {
 						try { // wait some time
 							Thread.sleep(5000);
@@ -841,7 +935,7 @@ public class SharedGalleryContentProviderIncludingRest implements GalleryContent
 			}
 		}
 		System.out.println("finished uploading picture " + finished);
-		if(!finished)
+		if (!finished)
 			return null;
 		return new SharedPicture(name);
 	}
@@ -851,62 +945,60 @@ public class SharedGalleryContentProviderIncludingRest implements GalleryContent
 	 */
 	@Override
 	public boolean deletePicture(Album album, Picture picture) {
-		
+
 		boolean finished = false;
-		
 
 		for (String serverUrl : servers) {
-			try{
-				if(serverUrl.charAt(0)==(SOAP))
-					finished = soapDeletePic(serverUrl.substring(1),album,picture);
-				else if(serverUrl.charAt(0) == REST) // TODO: Rest method
-					finished = restDeletePic(serverUrl.substring(1),album,picture);
+			try {
+				if (serverUrl.charAt(0) == (SOAP))
+					finished = soapDeletePic(serverUrl.substring(1), album, picture);
+				else if (serverUrl.charAt(0) == REST) // TODO: Rest method
+					finished = restDeletePic(serverUrl.substring(1), album, picture);
 				break;
-			}catch (Exception e){
+			} catch (Exception e) {
 				e.printStackTrace();
-				
+
 				System.out.println("Server currently unavailable.");
 			}
 		}
 		return finished;
 	}
 
-	private boolean imgurDeletePic (String proxyUrl, Picture picture) {
+	private boolean imgurDeletePic(String proxyUrl, Picture picture) {
 		boolean done = false;
 
 		for (int j = 0; j < 3 && !done; j++) {
-			
+
 			WebTarget target = client.target(getBaseURI(proxyUrl));
 			// extrair ID antes de enviar o pictureName
 			String pictureID = extractID(picture.getName());
-			Response replyB = target.path("RESTProxy/deletePicture/" +  pictureID)
-					.request().delete();
+			Response replyB = target.path("RESTProxy/deletePicture/" + pictureID).request().delete();
 			if (replyB.getStatusInfo().equals(Status.OK)) {
 				done = true;
-			} 
-			// else try again	
+			}
+			// else try again
 		}
 		return done;
 	}
-	
+
 	private boolean restDeletePic(String serverUrl, Album album, Picture picture) {
 		boolean done = false;
 
 		for (int j = 0; j < 3 && !done; j++) {
 			WebTarget target = client.target(getBaseURI(serverUrl));
 			System.out.println(serverUrl);
-			Response replyB = target.path("RESTServer/deletePicture/" + album.getName()
-			+"/"+ picture.getName())
+			Response replyB = target.path("RESTServer/deletePicture/" + album.getName() + "/" + picture.getName())
 					.request().delete();
 			if (replyB.getStatusInfo().equals(Status.OK)) {
 				done = true;
-			} 
-			// else try again	
+			}
+			// else try again
 		}
 		return done;
 	}
 
-	private boolean soapDeletePic(String serverUrl, Album album, Picture picture) throws MalformedURLException, InfoNotFoundException_Exception {
+	private boolean soapDeletePic(String serverUrl, Album album, Picture picture)
+			throws MalformedURLException, InfoNotFoundException_Exception {
 		boolean finished = false;
 		URL wsURL = new URL(String.format("%s", serverUrl));
 		FileServerImplWSService service = new FileServerImplWSService(wsURL);
@@ -914,7 +1006,7 @@ public class SharedGalleryContentProviderIncludingRest implements GalleryContent
 		try {
 			server.deletePicture(album.getName(), picture.getName());
 			finished = true;
-		
+
 		} catch (Exception e) {
 			// call method again, max 3 times
 			for (int i = 0; !finished && i < 3; i++) {
@@ -934,7 +1026,6 @@ public class SharedGalleryContentProviderIncludingRest implements GalleryContent
 		}
 		return finished;
 	}
-	
 
 	/**
 	 * Represents a shared album.

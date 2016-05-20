@@ -23,8 +23,6 @@ import com.sun.net.httpserver.HttpServer;
 
 public class RestServer {
 	private static final String WSERVICE = "GiveMeYourIps";
-	private static final String WSERVICEP = "ImAProxy";
-	private static final String MULTICASTIP = "229.0.0.1";
 	private static final int PORT = 9090;
 	
 	
@@ -43,9 +41,7 @@ public class RestServer {
 			return;
 		}
 		ClientConfig configClient = new ClientConfig();
-	   	ServerResource.client = ClientBuilder.newClient(configClient);
-		
-		getServers(ServerResource.proxyServers );
+	   	
 
 		config.register(ServerResource.class);
 		
@@ -59,72 +55,6 @@ public class RestServer {
 		
 	}
 
-	private static void getServers(List<String> servers) {
-		new Thread(() -> {
-			try {
-				
-
-				final int port = PORT;
-				final String addr = MULTICASTIP;
-				final InetAddress address = InetAddress.getByName(addr);
-
-				MulticastSocket socket = new MulticastSocket();
-
-				byte[] input = (WSERVICEP).getBytes();
-				DatagramPacket packet = new DatagramPacket(input, input.length);
-				packet.setAddress(address);
-				packet.setPort(port);
-				Map<String,Integer> consecutiveReplies = new HashMap<String,Integer>();
-				int numberOfQueries = 0;
-
-			
-			    
-				while (true) {
-					System.out.println("Sent packet");
-					socket.send(packet);
-					// System.out.println(new String(packet.getData()));
-					numberOfQueries++;
-					byte[] received = new byte[65536];
-					DatagramPacket receivedPacket = new DatagramPacket(received, received.length);
-					boolean foundAllServers = false;
-					try {
-						while (!foundAllServers) {
-							
-							socket.setSoTimeout(60000);
-
-							socket.receive(receivedPacket);
-
-							String serverHost = new String(receivedPacket.getData()).trim();
-							consecutiveReplies.put(serverHost,
-									consecutiveReplies.getOrDefault(serverHost, 1)+1); 
-									//getOrDefault returns the current value for the key
-									// or 1 if the key has no value yet
-							System.out.println(serverHost);
-							if (!servers.contains(serverHost))
-								servers.add(serverHost);
-						}
-					} catch (SocketTimeoutException e) {
-						foundAllServers = true;
-					}
-					
-					// delete servers if they havent replied in the last 3 times
-					for(String server : consecutiveReplies.keySet()){
-						if (consecutiveReplies.get(server) +3 < numberOfQueries){
-							// remove server
-							servers.remove(server);
-						}
-					}
-					
-					Thread.sleep(60000); // esperar um minuto e executar novo
-											// multicast
-				}
-
-			} catch (Exception e) {
-				e.printStackTrace();
-
-			}
-		}).start();
-	}
 	
 	private static void answerMulticast(String localhost) {
 
