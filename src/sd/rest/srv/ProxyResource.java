@@ -68,7 +68,7 @@ public class ProxyResource {
 			res = (JSONObject) parser.parse(albumsRes.getBody());
 			JSONArray pictures = (JSONArray) ((JSONObject) res.get("data")).get("images");
 			for (Object pic : pictures)
-				albumNames.add(((JSONObject) pic).get("id") + "" + ((JSONObject) pic).get("title"));
+				albumNames.add(((JSONObject) pic).get("id") + "." + ((JSONObject) pic).get("title"));
 
 			return Response.ok(albumNames).build();
 		} catch (ParseException e) {
@@ -167,7 +167,7 @@ public class ProxyResource {
 			res = (JSONObject) parser.parse(albumsRes.getBody());
 			JSONArray albums = (JSONArray) res.get("data");
 			for (Object album : albums)
-				albumNames.add(((JSONObject) album).get("id") + "" + ((JSONObject) album).get("title"));
+				albumNames.add(((JSONObject) album).get("id") + "." + ((JSONObject) album).get("title"));
 
 			return Response.ok(albumNames).build();
 		} catch (ParseException e) {

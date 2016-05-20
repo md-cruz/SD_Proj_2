@@ -9,10 +9,13 @@ import java.net.SocketTimeoutException;
 import java.net.URI;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 import javax.ws.rs.client.Client;
@@ -146,6 +149,10 @@ public class SharedGalleryContentProviderIncludingRest implements GalleryContent
 			this.gui = gui;
 		}
 	}
+	
+	private String extractID(String name) {
+		return name.split(".")[0];
+	}
 
 	/**
 	 * Returns the list of albums in the system. On error this method should
@@ -172,6 +179,33 @@ public class SharedGalleryContentProviderIncludingRest implements GalleryContent
 			}
 		}
 		return lst;
+	}
+	
+	private List<Album> imgurListOfAlbums (String proxyUrl) {
+		boolean done = false;
+		List<Album> lst = new ArrayList<Album>();
+		for (int j = 0; j < 3 && !done; j++) {
+			
+			WebTarget target = client.target(getBaseURI(proxyUrl));
+		
+			String[] albumNames;
+			Builder replyB = target.path("RESTProxy/getAlbumList/")
+					.request().accept(MediaType.APPLICATION_JSON);
+			
+			Response reply = replyB.get();
+			
+			if (reply.getStatusInfo().equals(Status.OK)) {
+				albumNames = replyB.get(String[].class);
+				for (int i = 0; i < albumNames.length; i++) {
+					SharedAlbum alb = new SharedAlbum(albumNames[i]);
+					if (!lst.contains(alb) && !alb.getName().endsWith(".deleted"))
+						lst.add(alb);
+				}
+				done = true;
+			
+			} 
+		}
+			return lst;
 	}
 	
 	private List<Album> restListOfAlbums(String serverUrl) {
@@ -307,6 +341,37 @@ public class SharedGalleryContentProviderIncludingRest implements GalleryContent
 		}
 		return lst;
 	}
+	
+	private List<Picture> imgurListOfPictures (String proxyUrl, Album album){
+		List<Picture> lst = new ArrayList<Picture>();
+		boolean done = false;
+
+		for (int j = 0; j < 3 && !done; j++) {
+			
+			WebTarget target = client.target(getBaseURI(proxyUrl));
+
+			String[] pictureNames;
+			// extrair ID do album antes de fazer o request
+			String albumID = extractID(album.getName());
+			Builder replyB = target.path("RESTProxy/getPictureList/" + albumID).request()
+					.accept(MediaType.APPLICATION_JSON);
+
+			Response reply = replyB.get();
+
+			if (reply.getStatusInfo().equals(Status.OK)) {
+				pictureNames = replyB.get(String[].class);
+				for (int i = 0; i < pictureNames.length; i++) {
+				SharedPicture pic = new SharedPicture(pictureNames[i]);
+				if (!lst.contains(pic) && !pic.getName().endsWith(".deleted"))
+					lst.add(pic);
+				done = true;
+				}
+
+			}
+			// else try again
+		}
+		return lst;
+	}
 
 	private List<Picture> soapListOfPictures(String serverUrl, Album album) {
 		List<Picture> lst = new ArrayList<Picture>();
@@ -378,6 +443,29 @@ public class SharedGalleryContentProviderIncludingRest implements GalleryContent
 		return pictureData;
 	}
 
+	
+	private byte[] imgurGetPicData (String proxyUrl, Picture picture) {
+		byte[] pictureData = null;
+		boolean done = false;
+
+		for (int j = 0; j < 3 && !done; j++) {
+		
+			WebTarget target = client.target(getBaseURI(proxyUrl));
+			// extrair ID da fotografia antes do request
+			String pictureID = extractID(picture.getName());
+			Builder replyB = target.path("RESTProxy/downloadPicture/" + pictureID).request()
+					.accept(MediaType.APPLICATION_OCTET_STREAM);
+			Response reply = replyB.get();
+			if (reply.getStatusInfo().equals(Status.OK)) {
+				pictureData = replyB.get(byte[].class);
+				done = true;
+
+			}
+			// else try again
+		}
+		return pictureData;
+	}
+	
 	private byte[] restGetPicData(String serverUrl, Album album, Picture picture) {
 		byte[] pictureData = null;
 		boolean done = false;
@@ -494,6 +582,23 @@ public class SharedGalleryContentProviderIncludingRest implements GalleryContent
 			return null;
 		return alb;
 	}
+	
+	private boolean imgurCreateAlbum (String proxyUrl, String albumName){
+		boolean done = false;
+
+		for (int j = 0; j < 3 && !done; j++) {
+			
+			WebTarget target = client.target(getBaseURI(proxyUrl));
+			Response replyB = target.path("RESTProxy/createNewAlbum/").request()
+					.post(Entity.entity(albumName, MediaType.APPLICATION_OCTET_STREAM));
+
+			if (replyB.getStatusInfo().equals(Status.OK)) {
+				done = true;
+			}
+			// else try again
+		}
+		return done;
+	}
 
 	private Album soapCreateAlbum(String serverUrl, String name) throws MalformedURLException {
 
@@ -550,6 +655,24 @@ public class SharedGalleryContentProviderIncludingRest implements GalleryContent
 			}
 		}
 	}
+	
+	private boolean imgurDeleteAlbum (String proxyUrl, Album album){
+		boolean done = false;
+
+		for (int j = 0; j < 3 && !done; j++) {
+			
+			WebTarget target = client.target(getBaseURI(proxyUrl));
+			// extrair id do albumName
+			String albumID = extractID(album.getName());
+			Response replyB = target.path("RESTProxy/deleteAlbum/" + albumID).request().delete();
+			if (replyB.getStatusInfo().equals(Status.OK)) {
+				done = true;
+			}
+			// else try again
+		}
+		return done;
+	}
+	
 
 	private void restDeleteAlbum(String serverUrl, Album album) {
 		boolean done = false;
@@ -636,11 +759,32 @@ public class SharedGalleryContentProviderIncludingRest implements GalleryContent
 		
 		return pic;
 	}
+	
+	
+	private Picture imgurUploadPic (String proxyUrl, Album album, String picName, byte[] data){
+		boolean done = false;
+		for (int j = 0; j < 3 && !done; j++) {
+			
+			WebTarget target = client.target(getBaseURI(proxyUrl));
+			
+			Response replyB = target.path("RESTProxy/uploadPicture/"
+			+ album.getName() +"/"+ picName)
+					.request().post( Entity.entity(data, MediaType.APPLICATION_OCTET_STREAM));
+		
+			if (replyB.getStatusInfo().equals(Status.OK)) {
+				done = true;
+			
+			} 
+			// else try again	
+		}
+		if(done)
+			return new SharedPicture(picName);
+		return null;
+	}
 
 	private Picture restUploadPic(String serverUrl, Album album, String name, byte[] data) {
 		
 		boolean done = false;
-		String path = album.getName() +File.separator+ name;
 		for (int j = 0; j < 3 && !done; j++) {
 			WebTarget target = client.target(getBaseURI(serverUrl));
 			System.out.println("hi");
@@ -727,6 +871,24 @@ public class SharedGalleryContentProviderIncludingRest implements GalleryContent
 		return finished;
 	}
 
+	private boolean imgurDeletePic (String proxyUrl, Picture picture) {
+		boolean done = false;
+
+		for (int j = 0; j < 3 && !done; j++) {
+			
+			WebTarget target = client.target(getBaseURI(proxyUrl));
+			// extrair ID antes de enviar o pictureName
+			String pictureID = extractID(picture.getName());
+			Response replyB = target.path("RESTProxy/deletePicture/" +  pictureID)
+					.request().delete();
+			if (replyB.getStatusInfo().equals(Status.OK)) {
+				done = true;
+			} 
+			// else try again	
+		}
+		return done;
+	}
+	
 	private boolean restDeletePic(String serverUrl, Album album, Picture picture) {
 		boolean done = false;
 
