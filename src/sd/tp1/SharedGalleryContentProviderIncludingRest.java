@@ -243,6 +243,9 @@ public class SharedGalleryContentProviderIncludingRest implements GalleryContent
 			}
 		}
 		// escolher proxy aleatoriamente
+		/*
+		 * nao usar os lists da proxy, esses sao usados so para sincronizacao
+		 * 
 		Random r = new Random();
 		String proxyUrl = proxies.get(r.nextInt(proxies.size()));
 		Set<Album> albSet = new HashSet<Album>(imgurListOfAlbums(proxyUrl));
@@ -252,39 +255,15 @@ public class SharedGalleryContentProviderIncludingRest implements GalleryContent
 					lst.add(alb);
 			}
 		}
+		
+		*/
 
 		return lst;
 	}
 
 	private void syncProxyServer() {
 
-		// ********* sincronizacao de albuns *************
-		// colocar flag de sync a serveralbs
-		// ir buscar lista l1 de albuns nos servidores locais
-		// colocar flag de sync a imguralbs
-		// ir buscar lista l2 de albuns no imgur
-		// comparar as listas
-		// caso faltem albuns a l1
-		// colocar flag de sync a addlocalalb
-		// criar os albuns nos servidores
-		// caso faltem albuns a l2
-		// colocar flag de sync a addimguralb
-		// criar os albuns no imgur
-
-		// ******** sincronizacao de pictures **********
-		// colocar flag de sync a serverpiclist
-		// ir buscar lista l1 de pictures nos servidores locais
-		// colocar flag de sync a imgurpiclist
-		// ir buscar lista l2 de pictures no imgur
-		// comparar as listas
-		// caso faltem pictures a l1
-		// colocar flag de sync a addlocalpic
-		// adicionar novas fotografias aos servidores
-		// caso faltem pictures a l2
-		// colocar flag de sync a addimgurpic
-		// adicionar novas fotografias ao imgur
-		// colocar flag de sync a synced
-
+		
 	}
 
 	private List<Album> imgurListOfAlbums(String proxyUrl) {
@@ -348,7 +327,7 @@ public class SharedGalleryContentProviderIncludingRest implements GalleryContent
 
 		System.out.println(serverUrl + " listAlbum\n");
 		URL wsURL = new URL(String.format("%s", serverUrl));
-		FileServerImplWSService service = new FileServerImplWSService(wsURL); // wsimport
+		FileServerImplWSService service = new FileServerImplWSService(wsURL); 
 		FileServerImplWS server = service.getFileServerImplWSPort();
 		try {
 			List<String> aList = server.getAlbumList();
