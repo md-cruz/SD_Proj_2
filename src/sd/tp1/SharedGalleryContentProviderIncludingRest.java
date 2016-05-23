@@ -143,6 +143,7 @@ public class SharedGalleryContentProviderIncludingRest implements GalleryContent
 	private void synchronizeStuff() {
 		new Thread(() -> {
 			try {
+				for(;;){
 				// sleep for one hour
 				Thread.sleep(3600000);
 				int numberOfProxies = proxies.size();
@@ -166,7 +167,7 @@ public class SharedGalleryContentProviderIncludingRest implements GalleryContent
 				// novo servidor e adicionado e assim que existe um proxy ligado
 				// perguntar tambem se e possivel esta thread parar as outras threads
 				// momentaneamente
-				
+				}
 				
 			} catch (Exception e) {
 				e.printStackTrace();
@@ -262,14 +263,18 @@ public class SharedGalleryContentProviderIncludingRest implements GalleryContent
 	@Override
 	public List<Album> getListOfAlbums() {
 		List<Album> lst = new ArrayList<Album>();
+		List<Album> tmp = new ArrayList<Album>();
 		System.out.println("Get List of Albums");
 
 		for (String serverUrl : servers) {
 			try {
 				if (serverUrl.charAt(0) == (SOAP))
-					lst = (soapListOfAlbums(serverUrl.substring(1)));
+					tmp = (soapListOfAlbums(serverUrl.substring(1)));
 				else if (serverUrl.charAt(0) == REST)
-					lst = (restListOfAlbums(serverUrl.substring(1)));
+					tmp = (restListOfAlbums(serverUrl.substring(1)));
+				for(Album a : tmp)
+					if(!lst.contains(a))
+						lst.add(a);
 				
 			} catch (Exception e) {
 				e.printStackTrace();
@@ -653,11 +658,11 @@ public class SharedGalleryContentProviderIncludingRest implements GalleryContent
 		int times = 0;
 		Album album = null;
 		// criar na proxy primeiro, e utilizar o id tambem como nome
-		String id =null;
+		String id ="";
 		if(!proxies.isEmpty()){
 		Random r = new Random();
-		imgurCreateAlbum(proxies.get(r.nextInt(proxies.size())), name);
-		id = imgurGetAlbId(proxies.get(r.nextInt(proxies.size())), name);
+		id = imgurCreateAlbum(proxies.get(r.nextInt(proxies.size())), name);
+		//id = imgurGetAlbId(proxies.get(r.nextInt(proxies.size())), name);
 		}
 		
 		try {
@@ -692,7 +697,7 @@ public class SharedGalleryContentProviderIncludingRest implements GalleryContent
 			System.out.println("No servers connected right now");
 			e.printStackTrace();
 		}
-		if(album == null && id!=null)
+		if(album == null)
 			album = new SharedAlbum(id+"." +name);
 		return album;
 	}
@@ -702,6 +707,7 @@ public class SharedGalleryContentProviderIncludingRest implements GalleryContent
 		boolean done = false;
 
 		for (int j = 0; j < 3 && !done; j++) {
+			System.out.println(getBaseURI(serverUrl,RESTPORT));
 			WebTarget target = client.target(getBaseURI(serverUrl,RESTPORT));
 			Response replyB = target.path("RESTServer/createNewAlbum/").request()
 					.post(Entity.entity(name, MediaType.APPLICATION_OCTET_STREAM));
@@ -720,18 +726,20 @@ public class SharedGalleryContentProviderIncludingRest implements GalleryContent
 		boolean done = false;
 		String albumID = "";
 		for (int j = 0; j < 3 && !done; j++) {
+			System.out.println(getBaseURI(proxyUrl,RESTPORT));
 
 			WebTarget target = client.target(getBaseURI(proxyUrl,IMGURPORT));
-			/*Builder reply = target.path("RESTProxy/createNewAlbum/").request()
+			Builder reply = target.path("RESTProxy/createNewAlbum/").request()					
 					.accept(MediaType.APPLICATION_OCTET_STREAM);
 
 			Response replyB = reply.post(Entity.entity(albumName, MediaType.APPLICATION_OCTET_STREAM));
-*/				
-			Response replyB = target.path("RESTProxy/createNewAlbum/").request()
-					.post(Entity.entity(albumName, MediaType.APPLICATION_OCTET_STREAM));
+				
+			/*Response replyB = target.path("RESTProxy/createNewAlbum/").request()
+					.post(Entity.entity(albumName, MediaType.APPLICATION_OCTET_STREAM));*/
+			
 			if (replyB.getStatusInfo().equals(Status.OK)) {
-				//albumID = reply.get(String.class);
-				System.out.println("created album successfully");
+				albumID = replyB.readEntity(String.class);
+				System.out.println("created album successfully " + albumID);
 				done = true;
 			}
 			// else try again
@@ -811,6 +819,7 @@ public class SharedGalleryContentProviderIncludingRest implements GalleryContent
 			String albumID = extractID(album);
 			Response replyB = target.path("RESTProxy/deleteAlbum/" + albumID).request()
 					.delete();
+			System.out.println(replyB.getStatusInfo());
 			if (replyB.getStatusInfo().equals(Status.OK)) {
 				done = true;
 			}
@@ -877,7 +886,7 @@ public class SharedGalleryContentProviderIncludingRest implements GalleryContent
 		Picture pic = null;
 		if(!proxies.isEmpty()){
 			Random r = new Random();
-			Picture d = imgurUploadPic(proxies.get(r.nextInt(proxies.size())),album.getName(), name,data);
+			pic = imgurUploadPic(proxies.get(r.nextInt(proxies.size())),album.getName(), name,data);
 			}
 		try {
 			if(servers.size()>0){
@@ -914,21 +923,29 @@ public class SharedGalleryContentProviderIncludingRest implements GalleryContent
 
 	private Picture imgurUploadPic(String proxyUrl, String album, String picName, byte[] data) {
 		boolean done = false;
+		String name = picName;
 		for (int j = 0; j < 3 && !done; j++) {
 
 			WebTarget target = client.target(getBaseURI(proxyUrl,IMGURPORT));
 
-			Response replyB = target.path("RESTProxy/uploadPicture/" + extractID(album) + "/" + picName).request()
+			/*Response replyB = target.path("RESTProxy/uploadPicture/" + extractID(album) + "/" + picName).request()
 					.post(Entity.entity(data, MediaType.APPLICATION_OCTET_STREAM));
+*/
+			Builder reply = target.path("RESTProxy/uploadPicture/" + extractID(album) + "/" + picName).request()					
+					.accept(MediaType.APPLICATION_OCTET_STREAM);
 
+			Response replyB = reply.post(Entity.entity(data, MediaType.APPLICATION_OCTET_STREAM));
+			System.out.println(replyB.getStatusInfo());
 			if (replyB.getStatusInfo().equals(Status.OK)) {
+				name = replyB.readEntity(String.class);
 				done = true;
 
 			}
 			// else try again
+			System.out.println("done " + done);
 		}
 		if (done)
-			return new SharedPicture(picName);
+			return new SharedPicture(name);
 		return null;
 	}
 
@@ -937,11 +954,10 @@ public class SharedGalleryContentProviderIncludingRest implements GalleryContent
 		boolean done = false;
 		for (int j = 0; j < 3 && !done; j++) {
 			WebTarget target = client.target(getBaseURI(serverUrl,RESTPORT));
-			System.out.println("hi");
 
 			Response replyB = target.path("RESTServer/uploadPicture/" + album + "/" + name).request()
 					.post(Entity.entity(data, MediaType.APPLICATION_OCTET_STREAM));
-
+			System.out.println(replyB.getStatusInfo());
 			if (replyB.getStatusInfo().equals(Status.OK)) {
 				done = true;
 
@@ -1005,9 +1021,8 @@ public class SharedGalleryContentProviderIncludingRest implements GalleryContent
 
 		if(!proxies.isEmpty()){
 			Random r = new Random();
-			boolean d = imgurDeletePic(proxies.get(r.nextInt(proxies.size())),picture.getName());
-			if(!d)
-				System.out.println("Something went wrong");
+			finished = imgurDeletePic(proxies.get(r.nextInt(proxies.size())),picture.getName());
+			
 			}
 		for (String serverUrl : servers) {
 			try {
@@ -1098,6 +1113,7 @@ public class SharedGalleryContentProviderIncludingRest implements GalleryContent
 				done = true;
 			}
 			// else try again
+			
 		}
 		return done;
 	}
@@ -1155,17 +1171,21 @@ public class SharedGalleryContentProviderIncludingRest implements GalleryContent
 				// check serverlogs
 				Date lastModifiedServerAlbum = restServer ? restGetAlbumLogs(serverUrl, album)
 						: soapGetAlbumLogs(serverUrl, album);
-				if (lastModifiedServerAlbum.after(imgurLastModifiedID(proxyUrl, album))) {
+				if (lastModifiedServerAlbum.after(imgurLastModifiedAlbum(proxyUrl, album))) {
 					imgurDeleteAlbum(proxyUrl, album);
 				} else {
-					String albName = imgurGetAlbId(proxyUrl,album)+"." +album;
+					String albName = album;
+					if(!album.contains("\\."))
+							albName = imgurGetAlbId(proxyUrl,album)+"." +album;
 					
 					if (restServer)
 						restCreateAlbum(serverUrl, albName);
 					else
 						soapCreateAlbum(serverUrl, albName);
 					for (Picture pic : imgurListOfPictures(proxyUrl, album)) {
-						String picId = imgurGetPicId(proxyUrl,album,pic.getName());
+						String picId = pic.getName();
+						if(!picId.contains("\\."))
+							picId = imgurGetPicId(proxyUrl,album,pic.getName());
 						if (restServer)
 							restUploadPic(serverUrl, albName, picId+"." +pic.getName(), imgurGetPicData(proxyUrl, picId+pic.getName()));
 						else
@@ -1180,7 +1200,7 @@ public class SharedGalleryContentProviderIncludingRest implements GalleryContent
 				// check serverlogs
 				Date lastModifiedServerAlbum = restServer ? restGetAlbumLogs(serverUrl, album)
 						: soapGetAlbumLogs(serverUrl, album);
-				if (lastModifiedServerAlbum.after(imgurLastModifiedID(proxyUrl, album))) {
+				if (lastModifiedServerAlbum.after(imgurLastModifiedAlbum(proxyUrl, album))) {
 					imgurCreateAlbum(proxyUrl, album);
 					for (Picture pic : restListOfPictures(serverUrl, album)) {
 						imgurUploadPic(proxyUrl, album, pic.getName(), restGetPicData(serverUrl, album, pic.getName()));
@@ -1212,9 +1232,9 @@ public class SharedGalleryContentProviderIncludingRest implements GalleryContent
 			for (String pic : picServer) {
 				// check pick logs
 				if (!picProxy.contains(pic)) {
-					Date lastModifiedServerPic = restServer ? restGetAlbumLogs(serverUrl, album)
-							: soapGetAlbumLogs(serverUrl, album);
-					if (lastModifiedServerPic.after(imgurLastModifiedID(proxyUrl, pic))) {
+					Date lastModifiedServerPic = restServer ? restGetPicLogs(serverUrl, album,pic)
+							: soapGetPicLogs(serverUrl, album,pic);
+					if (lastModifiedServerPic.after(imgurLastModifiedPicture(proxyUrl, pic))) {
 						imgurUploadPic(proxyUrl, album, pic, restGetPicData(serverUrl, album, pic));
 					} else {
 						if (restServer)
@@ -1226,12 +1246,14 @@ public class SharedGalleryContentProviderIncludingRest implements GalleryContent
 			}
 			for (String pic : picProxy) {
 				if (!picServer.contains(pic)) {
-					Date lastModifiedServerPic = restServer ? restGetAlbumLogs(serverUrl, album)
-							: soapGetAlbumLogs(serverUrl, album);
-					if (lastModifiedServerPic.after(imgurLastModifiedID(proxyUrl, pic))) {
+					Date lastModifiedServerPic = restServer ? restGetPicLogs(serverUrl, album,pic)
+							: soapGetPicLogs(serverUrl, album,pic);
+					if (lastModifiedServerPic.after(imgurLastModifiedPicture(proxyUrl, pic))) {
 						imgurDeletePic(proxyUrl, pic);
 					} else {
-						String picId = imgurGetPicId(proxyUrl,album,pic);
+						String picId = pic;
+						if(!pic.contains("\\."))
+							picId = imgurGetPicId(proxyUrl,album,pic);
 						if (restServer)
 							restUploadPic(serverUrl, album, picId+"." +pic, imgurGetPicData(proxyUrl, picId+pic));
 						else
@@ -1241,6 +1263,8 @@ public class SharedGalleryContentProviderIncludingRest implements GalleryContent
 			}
 		}
 	}
+
+	
 
 	private void syncServerWithServer(String serverAUrl, String serverBUrl)
 			throws MalformedURLException, InfoNotFoundException_Exception, IOException_Exception {
@@ -1366,10 +1390,10 @@ public class SharedGalleryContentProviderIncludingRest implements GalleryContent
 			for (String pic : picServerB) {
 				// check pick logs
 				if (!picServerA.contains(pic)) {
-					Date lastModifiedServerPicB = serverBRest ? restGetAlbumLogs(serverBUrl, album)
-							: soapGetAlbumLogs(serverBUrl, album);
-					Date lastModifiedServerPicA = serverARest ? restGetAlbumLogs(serverAUrl, album)
-							: soapGetAlbumLogs(serverAUrl, album);
+					Date lastModifiedServerPicB = serverBRest ? restGetPicLogs(serverBUrl, album,pic)
+							: soapGetPicLogs(serverBUrl, album,pic);
+					Date lastModifiedServerPicA = serverARest ? restGetPicLogs(serverAUrl, album,pic)
+							: soapGetPicLogs(serverAUrl, album,pic);
 					if (lastModifiedServerPicB.after(lastModifiedServerPicA)) {
 						if(serverBRest){
 						if (serverARest)
@@ -1392,10 +1416,10 @@ public class SharedGalleryContentProviderIncludingRest implements GalleryContent
 			}
 			for (String pic : picServerA) {
 				if (!picServerB.contains(pic)) {
-					Date lastModifiedServerPicB = serverBRest ? restGetAlbumLogs(serverBUrl, album)
-							: soapGetAlbumLogs(serverBUrl, album);
-					Date lastModifiedServerPicA = serverARest ? restGetAlbumLogs(serverAUrl, album)
-							: soapGetAlbumLogs(serverAUrl, album);
+					Date lastModifiedServerPicB = serverBRest ? restGetPicLogs(serverBUrl, album,pic)
+							: soapGetPicLogs(serverBUrl, album,pic);
+					Date lastModifiedServerPicA = serverARest ? restGetPicLogs(serverAUrl, album,pic)
+							: soapGetPicLogs(serverAUrl, album,pic);
 					if (lastModifiedServerPicB.after(lastModifiedServerPicA)) {
 						if (serverARest)
 							restDeletePic(serverAUrl, album, pic);
@@ -1492,9 +1516,47 @@ public class SharedGalleryContentProviderIncludingRest implements GalleryContent
 		return null;
 	}
 
-	private Date imgurLastModifiedID(String proxyUrl, String album) {
-		// TODO Auto-generated method stub
-		return null;
+	private Date imgurLastModifiedAlbum(String proxyUrl, String album) {
+		boolean done = false;
+		String lastMod = "";
+
+		for (int j = 0; j < 3 && !done; j++) {
+			WebTarget target = client.target(getBaseURI(proxyUrl,RESTPORT));
+
+			System.out.println(proxyUrl);
+			Builder replyB = target.path("RESTProxy/albumLastModified/"  + album).request()
+					.accept(MediaType.APPLICATION_JSON);
+
+			Response reply = replyB.get();
+
+			if (reply.getStatusInfo().equals(Status.OK)) {
+				lastMod = replyB.get(String.class);
+				done = true;
+			}
+			// else try again
+		}
+		return new Date(Long.parseLong(lastMod.split("\\.")[1]));
+	}
+	private Date imgurLastModifiedPicture(String proxyUrl, String pic) {
+		boolean done = false;
+		String lastMod = "";
+
+		for (int j = 0; j < 3 && !done; j++) {
+			WebTarget target = client.target(getBaseURI(proxyUrl,RESTPORT));
+
+			System.out.println(proxyUrl);
+			Builder replyB = target.path("RESTProxy/picLogs/"  + pic).request()
+					.accept(MediaType.APPLICATION_JSON);
+
+			Response reply = replyB.get();
+
+			if (reply.getStatusInfo().equals(Status.OK)) {
+				lastMod = replyB.get(String.class);
+				done = true;
+			}
+			// else try again
+		}
+		return new Date(Long.parseLong(lastMod.split("\\.")[1]));
 	}
 
 	private Date restGetPicLogs(String serverUrl, String album, String picture) {

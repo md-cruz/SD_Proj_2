@@ -35,7 +35,7 @@ public class RestServer {
 		try{
 		ServerResource.basePath = new File(args[0]);
 		ServerResource.albumLogs = new HashMap<String,String>();
-		ServerResource.picLogs = new HashMap<String, HashMap<String,String>>();
+		ServerResource.picLogs = new HashMap<String, Map<String,String>>();
 		if(!ServerResource.basePath.exists())
 			ServerResource.basePath.mkdirs();
 		}catch(Exception e){
@@ -43,7 +43,7 @@ public class RestServer {
 			return;
 		}
 		ClientConfig configClient = new ClientConfig();
-	   	
+	   	System.out.println(url);
 
 		config.register(ServerResource.class);
 		

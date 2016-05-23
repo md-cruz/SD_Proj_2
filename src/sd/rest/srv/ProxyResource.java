@@ -4,6 +4,7 @@ import java.io.DataInputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -40,13 +41,16 @@ public class ProxyResource {
 	static File basePath;
 	static OAuth20Service service;
 	static OAuth2AccessToken at;
+	static Map<String, String> albumLogs;
+	static Map<String, String> picLogs;
 
-	private com.github.scribejava.core.model.Response buildReq(String url, Verb v, Map<String, String> params) {
+	private com.github.scribejava.core.model.Response buildReq(String url, Verb v, Map<String, String> params,boolean sign) {
 		OAuthRequest request = new OAuthRequest(v, url, service);
 		if (params != null)
 			for (String key : params.keySet())
 				request.addParameter(key, params.get(key));
-		service.signRequest(at, request);
+		if(sign)
+			service.signRequest(at, request);
 		return request.send();
 	}
 
@@ -59,10 +63,11 @@ public class ProxyResource {
 		// garantir que e passado o albumID em vez do albumName
 		// ou extrair o ID a partir do name
 		String url = "https://api.imgur.com/3/album/" + albumID + "/images";
-		com.github.scribejava.core.model.Response albumsRes = buildReq(url, Verb.GET, null);
+		com.github.scribejava.core.model.Response albumsRes = buildReq(url, Verb.GET, null,true);
 		JSONObject res = null;
 		System.out.println("get picture " +albumsRes.getCode() + " a " + albumID);
 		List<String> pictureNames = new ArrayList<String>();
+		String albumNameId = albumID+getAlbumName(albumID);
 		try {
 			JSONParser parser = new JSONParser();
 			res = (JSONObject) parser.parse(albumsRes.getBody());
@@ -71,7 +76,14 @@ public class ProxyResource {
 			Iterator picturesIt = pictures.iterator();
 			while (picturesIt.hasNext()){
 				Object picture = picturesIt.next();
-				pictureNames.add(((JSONObject) picture).get("id") + "." + ((JSONObject) picture).get("title"));
+				String nameAndId = ((JSONObject) picture).get("id") + "." + ((JSONObject) picture).get("title");
+				if(!picLogs.containsKey(nameAndId)){
+					picLogs.put(nameAndId, "create."+String.valueOf(((JSONObject) picture).get("datetime")));
+					pictureNames.add(nameAndId);
+				}
+				else if(!picLogs.get(nameAndId).split("\\.")[0].equalsIgnoreCase("delete")){
+					pictureNames.add(nameAndId);
+				}
 			}
 			
 			return Response.ok(pictureNames).build();
@@ -83,15 +95,33 @@ public class ProxyResource {
 
 	}
 
+	private String getAlbumName(String albumID) {
+		String url = "https://api.imgur.com/3/account/me/album/" + albumID;
+		com.github.scribejava.core.model.Response albumsRes = buildReq(url, Verb.GET, null,true);
+		JSONObject res = null;
+		
+		try {
+			JSONParser parser = new JSONParser();
+
+			res = (JSONObject) parser.parse(albumsRes.getBody());
+			JSONObject album = (JSONObject) res.get("data");
+			return ((String)((JSONObject) album).get("title"));
+		} catch (ParseException e) {
+			e.printStackTrace();
+		}
+		return null;
+	}
+
 	// funciona, cria logo no imgur e na aplicacao
 	@POST
 	@Path("createNewAlbum")
-	@Produces(MediaType.APPLICATION_JSON)
+	@Produces(MediaType.APPLICATION_OCTET_STREAM)
+	@Consumes(MediaType.APPLICATION_OCTET_STREAM)
 	public Response createNewAlbum(String albumName) {
 		String url = "https://api.imgur.com/3/album";
 		Map<String, String> params = new HashMap<String, String>();
 		params.put("title", albumName);
-		com.github.scribejava.core.model.Response createRes = buildReq(url, Verb.POST, params);
+		com.github.scribejava.core.model.Response createRes = buildReq(url, Verb.POST, params,true);
 		boolean ok = 200 == createRes.getCode();
 		System.out.println("create album " +createRes.getCode());
 		if (ok){
@@ -103,8 +133,9 @@ public class ProxyResource {
 			res = (JSONObject) parser.parse(createRes.getBody());
 			
 			JSONObject albums = (JSONObject) res.get("data");
-			
-			return Response.ok().build();
+			albumLogs.put(albums.get("id") + "." +albumName, "create."+String.valueOf(System.currentTimeMillis()));
+
+			return Response.ok((String)albums.get("id")).build();
 			} catch (ParseException e) {
 				e.printStackTrace();
 			}
@@ -118,10 +149,11 @@ public class ProxyResource {
 	@Path("deleteAlbum/{albumID}")
 	public Response deleteAlbum(@PathParam("albumID") String albumID) {
 		String url = "https://api.imgur.com/3/account/me/album/" + albumID; 
-		com.github.scribejava.core.model.Response delRes = buildReq(url, Verb.DELETE, null);
+		com.github.scribejava.core.model.Response delRes = buildReq(url, Verb.DELETE, null,true);
 		System.out.println(url);
 		boolean ok = 200 == delRes.getCode();
 		System.out.println("delete " + delRes.getCode());
+		// meter os deletes nos logs
 		if (ok)
 			return Response.ok().build();
 		return Response.status(Status.NOT_FOUND).build();
@@ -150,7 +182,7 @@ public class ProxyResource {
 	@Produces(MediaType.APPLICATION_OCTET_STREAM)
 	public Response downloadPicture(@PathParam("pictureID") String pictureID) {
 		String url = "https://api.imgur.com/3/image/" + pictureID;
-		com.github.scribejava.core.model.Response picRes = buildReq(url, Verb.GET, null);
+		com.github.scribejava.core.model.Response picRes = buildReq(url, Verb.GET, null,true);
 		System.out.println(" DL pic " + picRes.getCode() + " id " + pictureID);
 		try {
 			JSONParser parser = new JSONParser();
@@ -158,14 +190,19 @@ public class ProxyResource {
 			JSONObject obj = (JSONObject) parser.parse(picRes.getBody());
 			JSONObject picture = (JSONObject) obj.get("data");
 			com.github.scribejava.core.model.Response imgRes = buildReq((String) picture.get("link"),
-					Verb.GET, null);
-			System.out.println((String) picture.get("link"));
-			byte[] data = new byte[(int)(long) picture.get("size")];
+					Verb.GET, null,false);
+			//System.out.println((String) picture.get("link"));
+		//	System.out.println(imgRes.getBody());
+			
+			//System.out.println(imgRes.getHeaders());
+			int size = Integer.parseInt(imgRes.getHeader("Content-Length"));
+			byte[] data = new byte[size];
+			//System.out.println(size);
 			DataInputStream dataStream = new DataInputStream(imgRes.getStream());
 			dataStream.readFully(data);
 
 			return Response.ok(data).build();
-		} catch (IOException | ParseException e) {
+		} catch (Exception e) {
 			e.printStackTrace();
 		}
 
@@ -182,7 +219,7 @@ public class ProxyResource {
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response getAlbumList() {
 		String url = "https://api.imgur.com/3/account/me/albums/";
-		com.github.scribejava.core.model.Response albumsRes = buildReq(url, Verb.GET, null);
+		com.github.scribejava.core.model.Response albumsRes = buildReq(url, Verb.GET, null,true);
 		JSONObject res = null;
 		System.out.println("list album " +albumsRes.getCode());
 		List<String> albumNames = new ArrayList<String>();
@@ -195,8 +232,16 @@ public class ProxyResource {
 			Iterator albumsIt = albums.iterator();
 			while (albumsIt.hasNext()){
 				Object album = albumsIt.next();
-				albumNames.add(((JSONObject) album).get("id") + "." + ((JSONObject) album).get("title"));
-			}
+				String nameAndId = ((JSONObject) album).get("id") + "." + ((JSONObject) album).get("title");
+				if(!albumLogs.containsKey(nameAndId)){
+					albumLogs.put(nameAndId, "create."+String.valueOf(((JSONObject) album).get("datetime")));
+					albumNames.add(nameAndId);
+				}
+				
+				else if(!albumLogs.get(nameAndId).split("\\.")[0].equalsIgnoreCase("delete")){
+					albumNames.add(nameAndId);	
+					System.out.println("alb " + nameAndId+albumLogs.get(nameAndId));}
+				}
 			return Response.ok(albumNames).build();
 		} catch (ParseException e) {
 			e.printStackTrace();
@@ -208,8 +253,15 @@ public class ProxyResource {
 	@Path("getAlbumId/{albumName}")
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response getAlbumId(@PathParam("albumName") String albumName) {
+		String albumId = getAlbId(albumName);
+		if(albumId!=null)
+			return Response.ok(albumId).build();
+		return Response.status(Status.NOT_FOUND).build();
+	}
+	
+	private String getAlbId(String albumName) {
 		String url = "https://api.imgur.com/3/account/me/albums/";
-		com.github.scribejava.core.model.Response albumsRes = buildReq(url, Verb.GET, null);
+		com.github.scribejava.core.model.Response albumsRes = buildReq(url, Verb.GET, null,true);
 		JSONObject res = null;
 		
 		try {
@@ -219,13 +271,13 @@ public class ProxyResource {
 			JSONArray albums = (JSONArray) res.get("data");
 			for (Object album : albums)
 				if(((String)((JSONObject) album).get("title")).equals(albumName))
-					return Response.ok(((String)((JSONObject) album).get("id"))).build();
+					return ((String)((JSONObject) album).get("id"));
 		} catch (ParseException e) {
 			e.printStackTrace();
 		}
-		return Response.status(Status.NOT_FOUND).build();
+		return null;
 	}
-	
+
 	// funciona?
 	@GET
 	@Path("getPictureId/{albumID}/{pictureName}")
@@ -236,7 +288,7 @@ public class ProxyResource {
 		// garantir que e passado o albumID em vez do albumName
 		// ou extrair o ID a partir do name
 		String url = "https://api.imgur.com/3/album/" + albumID + "/images";
-		com.github.scribejava.core.model.Response albumsRes = buildReq(url, Verb.GET, null);
+		com.github.scribejava.core.model.Response albumsRes = buildReq(url, Verb.GET, null,true);
 		JSONObject res = null;
 		
 		try {
@@ -262,18 +314,33 @@ public class ProxyResource {
 	public Response deletePicture(@PathParam("pictureID") String pictureID) {
 
 		String url = "https://api.imgur.com/3/image/" + pictureID;
-		com.github.scribejava.core.model.Response delRes = buildReq(url, Verb.DELETE,null);
+		com.github.scribejava.core.model.Response delRes = buildReq(url, Verb.DELETE,null,true);
 		System.out.println(" del pic " + delRes.getCode());
 		System.out.println(pictureID);
 		boolean ok = 200 == delRes.getCode();
-		if (ok)
+		if (ok){
+			JSONParser parser = new JSONParser();
+			JSONObject res;
+			try {
+				res = (JSONObject) parser.parse(delRes.getBody());
+			
+			JSONObject picture = ((JSONObject) res.get("data"));
+			String nameAndId = pictureID + "." +(String) picture.get("title") ;
+			picLogs.put(nameAndId, "delete."+String.valueOf(System.currentTimeMillis()));
+			} catch (ParseException e) {
+				e.printStackTrace();
+			}
 			return Response.ok().build();
+		}
 		return Response.status(Status.NOT_FOUND).build();
 	}
+
+	
 
 	// faz upload corretamente
 	@POST
 	@Path("uploadPicture/{albumName}/{pictureName}")
+	@Produces(MediaType.APPLICATION_OCTET_STREAM)
 	@Consumes(MediaType.APPLICATION_OCTET_STREAM)
 	public Response uploadPicture(@PathParam("albumName") String albumName,
 			@PathParam("pictureName") String pictureName, byte[] data) {
@@ -283,23 +350,54 @@ public class ProxyResource {
 		params.put("image", Base64.encodeBase64String(data));
 		params.put("album", albumName);
 		params.put("title", pictureName);
-		com.github.scribejava.core.model.Response createRes = buildReq(url, Verb.PUT,params);
+		com.github.scribejava.core.model.Response createRes = buildReq(url, Verb.POST,params,true);
 		System.out.println("a " + albumName + " p " + pictureName);
-		/*OAuthRequest request = new OAuthRequest(Verb.PUT, url, service);
+		/*OAuthRequest request = new OAuthRequest(Verb.POST, url, service);
 		request.addPayload(data);
 
-		request.addParameter("album",albumName);
-		request.addParameter("title", pictureName);
+		request.addQuerystringParameter("album",albumName);
+		request.addQuerystringParameter("title", pictureName);
 		
 		service.signRequest(at, request);
 		com.github.scribejava.core.model.Response r = request.send();*/
 		System.out.println(" upload pic " + createRes.getCode());
 		System.out.println(createRes.getBody());
 		boolean ok = 200 == createRes.getCode();
-		if (ok)
-			return Response.ok().build();
+		if (ok){
+			JSONParser parser = new JSONParser();
+			JSONObject res;
+			try {
+				res = (JSONObject) parser.parse(createRes.getBody());
+			
+			JSONObject picture = ((JSONObject) res.get("data"));
+			String nameAndId = (String) picture.get("id") + "."+pictureName;
+			picLogs.put(nameAndId,"create."+ String.valueOf(System.currentTimeMillis()));
+			return Response.ok(nameAndId).build();
+			} catch (ParseException e) {
+				e.printStackTrace();
+			}
+			
+		}
 		return Response.status(Status.BAD_REQUEST).build();
+	}
+	
 
+	@GET
+	@Path("albumLastModified/{album}")
+	@Produces(MediaType.APPLICATION_OCTET_STREAM)
+	public Response getAlbumLastModified(@PathParam("album") String album) {
+		if (albumLogs.containsKey(album))
+			return Response.ok(albumLogs.get(album)).build();
+		return Response.status(Status.NOT_FOUND).build();
+	}
+
+	@GET
+	@Path("picLogs/{picture}")
+	@Produces(MediaType.APPLICATION_OCTET_STREAM)
+	public Response picLogs( @PathParam("picture") String picture) {
+		if (picLogs.containsKey(picture)) 
+			return Response.ok(picLogs.get(picture)).build();	
+		return Response.status(Status.NOT_FOUND).build();
 	}
 
 }

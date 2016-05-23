@@ -34,7 +34,7 @@ public class ServerResource {
 
 	static File basePath;
 	static Map<String, String> albumLogs;
-	static Map<String, HashMap<String, String>> picLogs;
+	static Map<String, Map<String, String>> picLogs;
 
 	// works
 	@GET
@@ -208,7 +208,9 @@ public class ServerResource {
 			@PathParam("pictureName") String pictureName) {
 		boolean success = deletePic(albumName, pictureName);
 		if (success) {
-			picLogs.get(albumName).put(pictureName, String.valueOf(System.currentTimeMillis()));
+			Map<String, String> tmp = new HashMap<String,String>();
+			tmp.put(pictureName, String.valueOf(System.currentTimeMillis()));
+			picLogs.put(albumName,tmp);
 
 			return Response.ok().build();
 		}
@@ -237,7 +239,9 @@ public class ServerResource {
 		boolean success = uploadPic(albumName, pictureName, data);
 
 		if (success) {
-			picLogs.get(albumName).put(pictureName, String.valueOf(System.currentTimeMillis()));
+			Map<String, String> tmp = new HashMap<String,String>();
+			tmp.put(pictureName, String.valueOf(System.currentTimeMillis()));
+			picLogs.put(albumName,tmp);
 
 			return Response.ok().build();
 		}
@@ -256,6 +260,7 @@ public class ServerResource {
 				sOut = new FileOutputStream(f);
 				sOut.write(data);
 				sOut.close();
+				success = true;
 			}
 		} catch (Exception e) {
 			e.printStackTrace();

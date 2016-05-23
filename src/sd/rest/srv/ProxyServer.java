@@ -11,6 +11,7 @@ import java.net.InetAddress;
 import java.net.MulticastSocket;
 import java.net.URI;
 import java.nio.file.Files;
+import java.util.HashMap;
 import java.util.Scanner;
 
 import javax.ws.rs.core.UriBuilder;
@@ -44,6 +45,8 @@ public class ProxyServer {
 				.apiKey(apiKey)
 				.apiSecret(apiSecret)
 				.build(ImgurApi.instance());
+		ProxyResource.albumLogs = new HashMap<String,String>();
+		ProxyResource.picLogs = new HashMap<String, String>();
 		File atFile = new File("AccessToken.dat");
 		File rtFile = new File("RefreshToken.dat");
 		if(!atFile.exists()){

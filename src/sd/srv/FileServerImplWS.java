@@ -13,6 +13,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 import javax.jws.WebMethod;
 import javax.jws.WebService;
@@ -25,24 +26,25 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 import javax.xml.ws.Endpoint;
 
+import sd.rest.srv.ServerResource;
+
 @WebService
 public class FileServerImplWS {
 	private static final String WSERVICE = "GiveMeYourIps";
 	private File basePath;
-	private Map<String, String> albumLogs;
-	private Map<String, HashMap<String, String>> picLogs;
+	private static Map<String, String> albumLogs;
+	private static Map<String, Map<String, String>> picLogs;
 
 	public FileServerImplWS() {
 		this(".");
-		albumLogs = new HashMap<String,String>();
-		picLogs = new HashMap<String, HashMap<String,String>>();
+		
 	}
 
 	protected FileServerImplWS(String pathname) {
 		super();
 		basePath = new File(pathname);
 		albumLogs = new HashMap<String,String>();
-		picLogs = new HashMap<String, HashMap<String,String>>();
+		picLogs = new HashMap<String, Map<String,String>>();
 	}
 
 	@WebMethod
@@ -123,8 +125,10 @@ public class FileServerImplWS {
 			if(del.exists() && del.isFile())
 				deletedPicture.delete();
 			deletedPicture.renameTo(del);
-			picLogs.get(albumName).put(pictureName, String.valueOf(System.currentTimeMillis()));
-		}
+			
+			Map<String,String> tmp = new HashMap<String,String>();
+			tmp.put(pictureName,String.valueOf(System.currentTimeMillis()));
+			picLogs.put(albumName,tmp);		}
 		else
 			throw new InfoNotFoundException("Picture not found");
 	}
@@ -201,8 +205,10 @@ public class FileServerImplWS {
 			FileOutputStream sOut = new FileOutputStream(f);
 			sOut.write(data);
 			sOut.close();
-			picLogs.get(path.split(File.separator)[0])
-			.put(path.split(File.separator)[1], String.valueOf(System.currentTimeMillis()));
+			String [] s = path.split(Pattern.quote(File.separator));
+			Map<String,String> tmp = new HashMap<String,String>();
+			tmp.put(s[1],String.valueOf(System.currentTimeMillis()));
+			picLogs.put(s[0],tmp);
 		} else
 			throw new PictureExistsException("No picture");
 	}
@@ -213,7 +219,8 @@ public class FileServerImplWS {
 		String url = "http://"+InetAddress.getLocalHost().getHostAddress() +":8080/FileServer";
 		Endpoint.publish("http://0.0.0.0:8080/FileServer", new FileServerImplWS(path));
 		System.err.println("FileServer started " + url);
-		
+		albumLogs = new HashMap<String,String>();
+		picLogs = new HashMap<String, Map<String,String>>();
 		final String addr = "228.0.0.1";
 
 		final InetAddress address = InetAddress.getByName(addr);
