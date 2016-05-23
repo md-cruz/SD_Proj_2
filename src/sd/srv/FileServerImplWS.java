@@ -10,24 +10,39 @@ import java.net.MulticastSocket;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import javax.jws.WebMethod;
 import javax.jws.WebService;
+import javax.ws.rs.GET;
+import javax.ws.rs.Path;
+import javax.ws.rs.PathParam;
+import javax.ws.rs.Produces;
+import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.Response;
+import javax.ws.rs.core.Response.Status;
 import javax.xml.ws.Endpoint;
 
 @WebService
 public class FileServerImplWS {
 	private static final String WSERVICE = "GiveMeYourIps";
 	private File basePath;
+	private Map<String, String> albumLogs;
+	private Map<String, HashMap<String, String>> picLogs;
 
 	public FileServerImplWS() {
 		this(".");
+		albumLogs = new HashMap<String,String>();
+		picLogs = new HashMap<String, HashMap<String,String>>();
 	}
 
 	protected FileServerImplWS(String pathname) {
 		super();
 		basePath = new File(pathname);
+		albumLogs = new HashMap<String,String>();
+		picLogs = new HashMap<String, HashMap<String,String>>();
 	}
 
 	@WebMethod
@@ -50,10 +65,30 @@ public class FileServerImplWS {
 	
 	
 	@WebMethod
+	public String getAlbumLastModified(@PathParam("album") String album) {
+		if (albumLogs.containsKey(album))
+			return albumLogs.get(album);
+		return "";
+	}
+
+	@WebMethod
+	public String picLogs(@PathParam("album") String album, @PathParam("picture") String picture) {
+		if (picLogs.containsKey(album)) {
+			if (picLogs.get(album).containsKey(picture)) {
+				String s = picLogs.get(album).get(picture);
+				return s;
+			}
+		}
+		return "";
+	}
+	
+	@WebMethod
 	public boolean createNewAlbum(String albumName) {
 		File newAlbum = new File(basePath,albumName);
 		try{
-		return newAlbum.mkdirs();
+		boolean s = newAlbum.mkdirs();
+		albumLogs.put(albumName, String.valueOf(System.currentTimeMillis()));
+		return s;
 		
 		} catch (SecurityException e) {
 			return false;
@@ -74,7 +109,7 @@ public class FileServerImplWS {
 				
 			}else
 				deletedAlbum.renameTo(del);
-		
+			albumLogs.put(albumName, String.valueOf(System.currentTimeMillis()));
 		}
 		else
 			throw new InfoNotFoundException("Album not found :" );
@@ -87,7 +122,9 @@ public class FileServerImplWS {
 			File del = new File(deletedPicture.getAbsolutePath() + ".deleted");
 			if(del.exists() && del.isFile())
 				deletedPicture.delete();
-			deletedPicture.renameTo(del);}
+			deletedPicture.renameTo(del);
+			picLogs.get(albumName).put(pictureName, String.valueOf(System.currentTimeMillis()));
+		}
 		else
 			throw new InfoNotFoundException("Picture not found");
 	}
@@ -164,6 +201,8 @@ public class FileServerImplWS {
 			FileOutputStream sOut = new FileOutputStream(f);
 			sOut.write(data);
 			sOut.close();
+			picLogs.get(path.split(File.separator)[0])
+			.put(path.split(File.separator)[1], String.valueOf(System.currentTimeMillis()));
 		} else
 			throw new PictureExistsException("No picture");
 	}

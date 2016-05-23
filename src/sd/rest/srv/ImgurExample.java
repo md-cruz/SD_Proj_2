@@ -69,7 +69,6 @@ public abstract class ImgurExample
 			final OAuth20Service service = new ServiceBuilder()
 					.apiKey(apiKey)
 					.apiSecret(apiSecret)
-					.callback("http://www.google.com")
 					.build(ImgurApi.instance());
 			final Scanner in = new Scanner(System.in);
 
@@ -80,16 +79,12 @@ public abstract class ImgurExample
 			System.out.println(authorizationUrl);
 			System.out.println("e copiar o codigo obtido para aqui:");
 			System.out.print(">>");
-			String code = getPinFromPage(service,authorizationUrl,apiKey);
+			String code = in.nextLine();
 
 			// Trade the Request Token and Verifier for the Access Token
 			System.out.println("A obter o Access Token!");
 			final OAuth2AccessToken accessToken = service.getAccessToken(code);
-			System.out.println("rawResponse " +accessToken.getRawResponse());
-			System.out.println("scope " +accessToken.getScope());
-			System.out.println("refreshToken " +accessToken.getRefreshToken());
-			System.out.println("tokenType " +accessToken.getTokenType());
-			System.out.println("accessToken " +accessToken.getAccessToken());
+			
 			
 			
 			// Ready to execute operations
@@ -98,7 +93,7 @@ public abstract class ImgurExample
 					"https://api.imgur.com/3/account/nunopreguica/albums/ids", service);
 			service.signRequest(accessToken, albumsReq);
 			final Response albumsRes = albumsReq.send();
-			System.out.println(albumsRes.getCode());
+			System.out.println(albumsRes.getHeaders());
 		
 			JSONParser parser = new JSONParser();
 			JSONObject res = (JSONObject) parser.parse(albumsRes.getBody());

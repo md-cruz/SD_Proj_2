@@ -1,7 +1,11 @@
 package sd.rest.srv;
 
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.net.DatagramPacket;
 import java.net.InetAddress;
 import java.net.MulticastSocket;
@@ -33,9 +37,8 @@ public class ProxyServer {
 
 		final String apiKey = "ae169aff6383f6f"; 
 		final String apiSecret = "a009a369aeee37a15e549fc6f851cc5ac01ef09e"; 
-		long expirationDate = 0L;
-		URI baseUri = UriBuilder.fromUri("http://0.0.0.0/").port(9090).build();
-		final String url = "http://"+InetAddress.getLocalHost().getHostAddress() +":9090/";
+		URI baseUri = UriBuilder.fromUri("http://0.0.0.0/").port(9060).build();
+		final String url = "http://"+InetAddress.getLocalHost().getHostAddress() +":9060/";
 		ResourceConfig config = new ResourceConfig();
 		ProxyResource.service = new ServiceBuilder()
 				.apiKey(apiKey)
@@ -44,6 +47,7 @@ public class ProxyServer {
 		File atFile = new File("AccessToken.dat");
 		File rtFile = new File("RefreshToken.dat");
 		if(!atFile.exists()){
+		
 			Scanner in = new Scanner(System.in);
 			final String authorizationUrl = ProxyResource.service.getAuthorizationUrl();
 			System.out.println("Necessario dar permissao neste URL:");
@@ -55,8 +59,7 @@ public class ProxyServer {
 			ProxyResource.at = ProxyResource.service.getAccessToken(code);
 			
 			saveTokens(ProxyResource.at, atFile,rtFile);
-			expirationDate = System.currentTimeMillis() + DAYS;
-		}else if(System.currentTimeMillis() > expirationDate){
+		}else if(System.currentTimeMillis() > atFile.lastModified()+DAYS){
 			String refreshTokenString =
 					new String(Files.readAllBytes(rtFile.toPath() ));
 
@@ -72,11 +75,17 @@ public class ProxyServer {
 			ProxyResource.at = ProxyResource.
 					service.
 					getAccessToken((String) getTokens.get("access_token"));
-			
+			System.out.println(ProxyResource.at.getAccessToken());
 			saveTokens( ProxyResource.at, atFile, rtFile);
 		}else{
-			String accessTokenString = new String(Files.readAllBytes(atFile.toPath() ));
-			ProxyResource.at = new OAuth2AccessToken(accessTokenString);
+			//String accessTokenString = new String(Files.readAllBytes(atFile.toPath() ));
+
+			FileInputStream fin = new FileInputStream(atFile);
+			ObjectInputStream ois = new ObjectInputStream(fin);
+			ProxyResource.at = (OAuth2AccessToken) ois.readObject();
+			ois.close();
+			 
+			System.out.println(ProxyResource.at.getAccessToken());
 		}
 		
 	
@@ -94,9 +103,21 @@ public class ProxyServer {
 	private static void saveTokens( OAuth2AccessToken at, File atFile, File rtFile) {
 		String accessToken = at.toString();
 		try {
-			Files.write(atFile.toPath(), accessToken.getBytes());
+
+			FileOutputStream fout = new FileOutputStream(atFile);
+			ObjectOutputStream oos = new ObjectOutputStream(fout);   
+			oos.writeObject(at);
+			oos.close();
+			
+			FileOutputStream fout1 = new FileOutputStream(rtFile);
+			ObjectOutputStream oos1 = new ObjectOutputStream(fout1);   
+			oos1.writeObject(at.getRefreshToken());
+			oos1.close();
+			System.out.println(at.getAccessToken());
+			/*Files.write(atFile.toPath(), accessToken.getBytes());
 			String refreshTokenString = at.getRefreshToken();
 			Files.write( rtFile.toPath(), refreshTokenString.getBytes() );
+			*/
 			
 			
 		} catch (IOException e) {
@@ -121,7 +142,7 @@ public class ProxyServer {
 
 					if (s.equalsIgnoreCase(WSERVICE)) {
 
-						byte[] data = ("R" + localhost).getBytes();
+						byte[] data = (localhost).getBytes();
 						DatagramPacket sendingPacket = new DatagramPacket(data, data.length);
 						sendingPacket.setAddress(packet.getAddress());
 						sendingPacket.setPort(packet.getPort());

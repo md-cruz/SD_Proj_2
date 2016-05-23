@@ -24,17 +24,11 @@ import javax.xml.namespace.QName;
 @XmlRegistry
 public class ObjectFactory {
 
-    private final static QName _DownloadPictureResponse_QNAME = new QName("http://srv.sd/", "downloadPictureResponse");
-    private final static QName _GetFile_QNAME = new QName("http://srv.sd/", "getFile");
     private final static QName _IOException_QNAME = new QName("http://srv.sd/", "IOException");
-    private final static QName _DownloadPicture_QNAME = new QName("http://srv.sd/", "downloadPicture");
-    private final static QName _DeletePicture_QNAME = new QName("http://srv.sd/", "deletePicture");
+    private final static QName _GetAlbumLastModifiedResponse_QNAME = new QName("http://srv.sd/", "getAlbumLastModifiedResponse");
     private final static QName _InfoNotFoundException_QNAME = new QName("http://srv.sd/", "InfoNotFoundException");
-    private final static QName _GetFileResponse_QNAME = new QName("http://srv.sd/", "getFileResponse");
+    private final static QName _PicLogs_QNAME = new QName("http://srv.sd/", "picLogs");
     private final static QName _UploadPicture_QNAME = new QName("http://srv.sd/", "uploadPicture");
-    private final static QName _Alive_QNAME = new QName("http://srv.sd/", "alive");
-    private final static QName _GetAlbumListResponse_QNAME = new QName("http://srv.sd/", "getAlbumListResponse");
-    private final static QName _GetFileInfoResponse_QNAME = new QName("http://srv.sd/", "getFileInfoResponse");
     private final static QName _DeleteAlbumResponse_QNAME = new QName("http://srv.sd/", "deleteAlbumResponse");
     private final static QName _CreateNewAlbum_QNAME = new QName("http://srv.sd/", "createNewAlbum");
     private final static QName _PictureExistsException_QNAME = new QName("http://srv.sd/", "PictureExistsException");
@@ -43,10 +37,20 @@ public class ObjectFactory {
     private final static QName _GetAlbumList_QNAME = new QName("http://srv.sd/", "getAlbumList");
     private final static QName _GetFileInfo_QNAME = new QName("http://srv.sd/", "getFileInfo");
     private final static QName _DeletePictureResponse_QNAME = new QName("http://srv.sd/", "deletePictureResponse");
-    private final static QName _GetPictureListResponse_QNAME = new QName("http://srv.sd/", "getPictureListResponse");
-    private final static QName _CreateNewAlbumResponse_QNAME = new QName("http://srv.sd/", "createNewAlbumResponse");
     private final static QName _DeleteAlbum_QNAME = new QName("http://srv.sd/", "deleteAlbum");
     private final static QName _UploadPictureResponse_QNAME = new QName("http://srv.sd/", "uploadPictureResponse");
+    private final static QName _DownloadPictureResponse_QNAME = new QName("http://srv.sd/", "downloadPictureResponse");
+    private final static QName _GetFile_QNAME = new QName("http://srv.sd/", "getFile");
+    private final static QName _DownloadPicture_QNAME = new QName("http://srv.sd/", "downloadPicture");
+    private final static QName _DeletePicture_QNAME = new QName("http://srv.sd/", "deletePicture");
+    private final static QName _GetAlbumLastModified_QNAME = new QName("http://srv.sd/", "getAlbumLastModified");
+    private final static QName _GetFileResponse_QNAME = new QName("http://srv.sd/", "getFileResponse");
+    private final static QName _Alive_QNAME = new QName("http://srv.sd/", "alive");
+    private final static QName _GetAlbumListResponse_QNAME = new QName("http://srv.sd/", "getAlbumListResponse");
+    private final static QName _GetFileInfoResponse_QNAME = new QName("http://srv.sd/", "getFileInfoResponse");
+    private final static QName _PicLogsResponse_QNAME = new QName("http://srv.sd/", "picLogsResponse");
+    private final static QName _GetPictureListResponse_QNAME = new QName("http://srv.sd/", "getPictureListResponse");
+    private final static QName _CreateNewAlbumResponse_QNAME = new QName("http://srv.sd/", "createNewAlbumResponse");
     private final static QName _DownloadPictureResponseReturn_QNAME = new QName("", "return");
     private final static QName _UploadPictureArg1_QNAME = new QName("", "arg1");
 
@@ -55,6 +59,102 @@ public class ObjectFactory {
      * 
      */
     public ObjectFactory() {
+    }
+
+    /**
+     * Create an instance of {@link Alive }
+     * 
+     */
+    public Alive createAlive() {
+        return new Alive();
+    }
+
+    /**
+     * Create an instance of {@link GetAlbumListResponse }
+     * 
+     */
+    public GetAlbumListResponse createGetAlbumListResponse() {
+        return new GetAlbumListResponse();
+    }
+
+    /**
+     * Create an instance of {@link GetFileInfoResponse }
+     * 
+     */
+    public GetFileInfoResponse createGetFileInfoResponse() {
+        return new GetFileInfoResponse();
+    }
+
+    /**
+     * Create an instance of {@link GetFileResponse }
+     * 
+     */
+    public GetFileResponse createGetFileResponse() {
+        return new GetFileResponse();
+    }
+
+    /**
+     * Create an instance of {@link DeletePicture }
+     * 
+     */
+    public DeletePicture createDeletePicture() {
+        return new DeletePicture();
+    }
+
+    /**
+     * Create an instance of {@link GetAlbumLastModified }
+     * 
+     */
+    public GetAlbumLastModified createGetAlbumLastModified() {
+        return new GetAlbumLastModified();
+    }
+
+    /**
+     * Create an instance of {@link DownloadPicture }
+     * 
+     */
+    public DownloadPicture createDownloadPicture() {
+        return new DownloadPicture();
+    }
+
+    /**
+     * Create an instance of {@link GetFile }
+     * 
+     */
+    public GetFile createGetFile() {
+        return new GetFile();
+    }
+
+    /**
+     * Create an instance of {@link DownloadPictureResponse }
+     * 
+     */
+    public DownloadPictureResponse createDownloadPictureResponse() {
+        return new DownloadPictureResponse();
+    }
+
+    /**
+     * Create an instance of {@link CreateNewAlbumResponse }
+     * 
+     */
+    public CreateNewAlbumResponse createCreateNewAlbumResponse() {
+        return new CreateNewAlbumResponse();
+    }
+
+    /**
+     * Create an instance of {@link GetPictureListResponse }
+     * 
+     */
+    public GetPictureListResponse createGetPictureListResponse() {
+        return new GetPictureListResponse();
+    }
+
+    /**
+     * Create an instance of {@link PicLogsResponse }
+     * 
+     */
+    public PicLogsResponse createPicLogsResponse() {
+        return new PicLogsResponse();
     }
 
     /**
@@ -90,30 +190,6 @@ public class ObjectFactory {
     }
 
     /**
-     * Create an instance of {@link Alive }
-     * 
-     */
-    public Alive createAlive() {
-        return new Alive();
-    }
-
-    /**
-     * Create an instance of {@link GetAlbumListResponse }
-     * 
-     */
-    public GetAlbumListResponse createGetAlbumListResponse() {
-        return new GetAlbumListResponse();
-    }
-
-    /**
-     * Create an instance of {@link GetFileInfoResponse }
-     * 
-     */
-    public GetFileInfoResponse createGetFileInfoResponse() {
-        return new GetFileInfoResponse();
-    }
-
-    /**
      * Create an instance of {@link InfoNotFoundException }
      * 
      */
@@ -122,11 +198,11 @@ public class ObjectFactory {
     }
 
     /**
-     * Create an instance of {@link GetFileResponse }
+     * Create an instance of {@link PicLogs }
      * 
      */
-    public GetFileResponse createGetFileResponse() {
-        return new GetFileResponse();
+    public PicLogs createPicLogs() {
+        return new PicLogs();
     }
 
     /**
@@ -138,11 +214,11 @@ public class ObjectFactory {
     }
 
     /**
-     * Create an instance of {@link DeletePicture }
+     * Create an instance of {@link GetAlbumLastModifiedResponse }
      * 
      */
-    public DeletePicture createDeletePicture() {
-        return new DeletePicture();
+    public GetAlbumLastModifiedResponse createGetAlbumLastModifiedResponse() {
+        return new GetAlbumLastModifiedResponse();
     }
 
     /**
@@ -154,30 +230,6 @@ public class ObjectFactory {
     }
 
     /**
-     * Create an instance of {@link DownloadPicture }
-     * 
-     */
-    public DownloadPicture createDownloadPicture() {
-        return new DownloadPicture();
-    }
-
-    /**
-     * Create an instance of {@link GetFile }
-     * 
-     */
-    public GetFile createGetFile() {
-        return new GetFile();
-    }
-
-    /**
-     * Create an instance of {@link DownloadPictureResponse }
-     * 
-     */
-    public DownloadPictureResponse createDownloadPictureResponse() {
-        return new DownloadPictureResponse();
-    }
-
-    /**
      * Create an instance of {@link UploadPictureResponse }
      * 
      */
@@ -186,27 +238,11 @@ public class ObjectFactory {
     }
 
     /**
-     * Create an instance of {@link CreateNewAlbumResponse }
-     * 
-     */
-    public CreateNewAlbumResponse createCreateNewAlbumResponse() {
-        return new CreateNewAlbumResponse();
-    }
-
-    /**
      * Create an instance of {@link DeleteAlbum }
      * 
      */
     public DeleteAlbum createDeleteAlbum() {
         return new DeleteAlbum();
-    }
-
-    /**
-     * Create an instance of {@link GetPictureListResponse }
-     * 
-     */
-    public GetPictureListResponse createGetPictureListResponse() {
-        return new GetPictureListResponse();
     }
 
     /**
@@ -250,24 +286,6 @@ public class ObjectFactory {
     }
 
     /**
-     * Create an instance of {@link JAXBElement }{@code <}{@link DownloadPictureResponse }{@code >}}
-     * 
-     */
-    @XmlElementDecl(namespace = "http://srv.sd/", name = "downloadPictureResponse")
-    public JAXBElement<DownloadPictureResponse> createDownloadPictureResponse(DownloadPictureResponse value) {
-        return new JAXBElement<DownloadPictureResponse>(_DownloadPictureResponse_QNAME, DownloadPictureResponse.class, null, value);
-    }
-
-    /**
-     * Create an instance of {@link JAXBElement }{@code <}{@link GetFile }{@code >}}
-     * 
-     */
-    @XmlElementDecl(namespace = "http://srv.sd/", name = "getFile")
-    public JAXBElement<GetFile> createGetFile(GetFile value) {
-        return new JAXBElement<GetFile>(_GetFile_QNAME, GetFile.class, null, value);
-    }
-
-    /**
      * Create an instance of {@link JAXBElement }{@code <}{@link IOException }{@code >}}
      * 
      */
@@ -277,21 +295,12 @@ public class ObjectFactory {
     }
 
     /**
-     * Create an instance of {@link JAXBElement }{@code <}{@link DownloadPicture }{@code >}}
+     * Create an instance of {@link JAXBElement }{@code <}{@link GetAlbumLastModifiedResponse }{@code >}}
      * 
      */
-    @XmlElementDecl(namespace = "http://srv.sd/", name = "downloadPicture")
-    public JAXBElement<DownloadPicture> createDownloadPicture(DownloadPicture value) {
-        return new JAXBElement<DownloadPicture>(_DownloadPicture_QNAME, DownloadPicture.class, null, value);
-    }
-
-    /**
-     * Create an instance of {@link JAXBElement }{@code <}{@link DeletePicture }{@code >}}
-     * 
-     */
-    @XmlElementDecl(namespace = "http://srv.sd/", name = "deletePicture")
-    public JAXBElement<DeletePicture> createDeletePicture(DeletePicture value) {
-        return new JAXBElement<DeletePicture>(_DeletePicture_QNAME, DeletePicture.class, null, value);
+    @XmlElementDecl(namespace = "http://srv.sd/", name = "getAlbumLastModifiedResponse")
+    public JAXBElement<GetAlbumLastModifiedResponse> createGetAlbumLastModifiedResponse(GetAlbumLastModifiedResponse value) {
+        return new JAXBElement<GetAlbumLastModifiedResponse>(_GetAlbumLastModifiedResponse_QNAME, GetAlbumLastModifiedResponse.class, null, value);
     }
 
     /**
@@ -304,12 +313,12 @@ public class ObjectFactory {
     }
 
     /**
-     * Create an instance of {@link JAXBElement }{@code <}{@link GetFileResponse }{@code >}}
+     * Create an instance of {@link JAXBElement }{@code <}{@link PicLogs }{@code >}}
      * 
      */
-    @XmlElementDecl(namespace = "http://srv.sd/", name = "getFileResponse")
-    public JAXBElement<GetFileResponse> createGetFileResponse(GetFileResponse value) {
-        return new JAXBElement<GetFileResponse>(_GetFileResponse_QNAME, GetFileResponse.class, null, value);
+    @XmlElementDecl(namespace = "http://srv.sd/", name = "picLogs")
+    public JAXBElement<PicLogs> createPicLogs(PicLogs value) {
+        return new JAXBElement<PicLogs>(_PicLogs_QNAME, PicLogs.class, null, value);
     }
 
     /**
@@ -319,33 +328,6 @@ public class ObjectFactory {
     @XmlElementDecl(namespace = "http://srv.sd/", name = "uploadPicture")
     public JAXBElement<UploadPicture> createUploadPicture(UploadPicture value) {
         return new JAXBElement<UploadPicture>(_UploadPicture_QNAME, UploadPicture.class, null, value);
-    }
-
-    /**
-     * Create an instance of {@link JAXBElement }{@code <}{@link Alive }{@code >}}
-     * 
-     */
-    @XmlElementDecl(namespace = "http://srv.sd/", name = "alive")
-    public JAXBElement<Alive> createAlive(Alive value) {
-        return new JAXBElement<Alive>(_Alive_QNAME, Alive.class, null, value);
-    }
-
-    /**
-     * Create an instance of {@link JAXBElement }{@code <}{@link GetAlbumListResponse }{@code >}}
-     * 
-     */
-    @XmlElementDecl(namespace = "http://srv.sd/", name = "getAlbumListResponse")
-    public JAXBElement<GetAlbumListResponse> createGetAlbumListResponse(GetAlbumListResponse value) {
-        return new JAXBElement<GetAlbumListResponse>(_GetAlbumListResponse_QNAME, GetAlbumListResponse.class, null, value);
-    }
-
-    /**
-     * Create an instance of {@link JAXBElement }{@code <}{@link GetFileInfoResponse }{@code >}}
-     * 
-     */
-    @XmlElementDecl(namespace = "http://srv.sd/", name = "getFileInfoResponse")
-    public JAXBElement<GetFileInfoResponse> createGetFileInfoResponse(GetFileInfoResponse value) {
-        return new JAXBElement<GetFileInfoResponse>(_GetFileInfoResponse_QNAME, GetFileInfoResponse.class, null, value);
     }
 
     /**
@@ -421,24 +403,6 @@ public class ObjectFactory {
     }
 
     /**
-     * Create an instance of {@link JAXBElement }{@code <}{@link GetPictureListResponse }{@code >}}
-     * 
-     */
-    @XmlElementDecl(namespace = "http://srv.sd/", name = "getPictureListResponse")
-    public JAXBElement<GetPictureListResponse> createGetPictureListResponse(GetPictureListResponse value) {
-        return new JAXBElement<GetPictureListResponse>(_GetPictureListResponse_QNAME, GetPictureListResponse.class, null, value);
-    }
-
-    /**
-     * Create an instance of {@link JAXBElement }{@code <}{@link CreateNewAlbumResponse }{@code >}}
-     * 
-     */
-    @XmlElementDecl(namespace = "http://srv.sd/", name = "createNewAlbumResponse")
-    public JAXBElement<CreateNewAlbumResponse> createCreateNewAlbumResponse(CreateNewAlbumResponse value) {
-        return new JAXBElement<CreateNewAlbumResponse>(_CreateNewAlbumResponse_QNAME, CreateNewAlbumResponse.class, null, value);
-    }
-
-    /**
      * Create an instance of {@link JAXBElement }{@code <}{@link DeleteAlbum }{@code >}}
      * 
      */
@@ -457,6 +421,114 @@ public class ObjectFactory {
     }
 
     /**
+     * Create an instance of {@link JAXBElement }{@code <}{@link DownloadPictureResponse }{@code >}}
+     * 
+     */
+    @XmlElementDecl(namespace = "http://srv.sd/", name = "downloadPictureResponse")
+    public JAXBElement<DownloadPictureResponse> createDownloadPictureResponse(DownloadPictureResponse value) {
+        return new JAXBElement<DownloadPictureResponse>(_DownloadPictureResponse_QNAME, DownloadPictureResponse.class, null, value);
+    }
+
+    /**
+     * Create an instance of {@link JAXBElement }{@code <}{@link GetFile }{@code >}}
+     * 
+     */
+    @XmlElementDecl(namespace = "http://srv.sd/", name = "getFile")
+    public JAXBElement<GetFile> createGetFile(GetFile value) {
+        return new JAXBElement<GetFile>(_GetFile_QNAME, GetFile.class, null, value);
+    }
+
+    /**
+     * Create an instance of {@link JAXBElement }{@code <}{@link DownloadPicture }{@code >}}
+     * 
+     */
+    @XmlElementDecl(namespace = "http://srv.sd/", name = "downloadPicture")
+    public JAXBElement<DownloadPicture> createDownloadPicture(DownloadPicture value) {
+        return new JAXBElement<DownloadPicture>(_DownloadPicture_QNAME, DownloadPicture.class, null, value);
+    }
+
+    /**
+     * Create an instance of {@link JAXBElement }{@code <}{@link DeletePicture }{@code >}}
+     * 
+     */
+    @XmlElementDecl(namespace = "http://srv.sd/", name = "deletePicture")
+    public JAXBElement<DeletePicture> createDeletePicture(DeletePicture value) {
+        return new JAXBElement<DeletePicture>(_DeletePicture_QNAME, DeletePicture.class, null, value);
+    }
+
+    /**
+     * Create an instance of {@link JAXBElement }{@code <}{@link GetAlbumLastModified }{@code >}}
+     * 
+     */
+    @XmlElementDecl(namespace = "http://srv.sd/", name = "getAlbumLastModified")
+    public JAXBElement<GetAlbumLastModified> createGetAlbumLastModified(GetAlbumLastModified value) {
+        return new JAXBElement<GetAlbumLastModified>(_GetAlbumLastModified_QNAME, GetAlbumLastModified.class, null, value);
+    }
+
+    /**
+     * Create an instance of {@link JAXBElement }{@code <}{@link GetFileResponse }{@code >}}
+     * 
+     */
+    @XmlElementDecl(namespace = "http://srv.sd/", name = "getFileResponse")
+    public JAXBElement<GetFileResponse> createGetFileResponse(GetFileResponse value) {
+        return new JAXBElement<GetFileResponse>(_GetFileResponse_QNAME, GetFileResponse.class, null, value);
+    }
+
+    /**
+     * Create an instance of {@link JAXBElement }{@code <}{@link Alive }{@code >}}
+     * 
+     */
+    @XmlElementDecl(namespace = "http://srv.sd/", name = "alive")
+    public JAXBElement<Alive> createAlive(Alive value) {
+        return new JAXBElement<Alive>(_Alive_QNAME, Alive.class, null, value);
+    }
+
+    /**
+     * Create an instance of {@link JAXBElement }{@code <}{@link GetAlbumListResponse }{@code >}}
+     * 
+     */
+    @XmlElementDecl(namespace = "http://srv.sd/", name = "getAlbumListResponse")
+    public JAXBElement<GetAlbumListResponse> createGetAlbumListResponse(GetAlbumListResponse value) {
+        return new JAXBElement<GetAlbumListResponse>(_GetAlbumListResponse_QNAME, GetAlbumListResponse.class, null, value);
+    }
+
+    /**
+     * Create an instance of {@link JAXBElement }{@code <}{@link GetFileInfoResponse }{@code >}}
+     * 
+     */
+    @XmlElementDecl(namespace = "http://srv.sd/", name = "getFileInfoResponse")
+    public JAXBElement<GetFileInfoResponse> createGetFileInfoResponse(GetFileInfoResponse value) {
+        return new JAXBElement<GetFileInfoResponse>(_GetFileInfoResponse_QNAME, GetFileInfoResponse.class, null, value);
+    }
+
+    /**
+     * Create an instance of {@link JAXBElement }{@code <}{@link PicLogsResponse }{@code >}}
+     * 
+     */
+    @XmlElementDecl(namespace = "http://srv.sd/", name = "picLogsResponse")
+    public JAXBElement<PicLogsResponse> createPicLogsResponse(PicLogsResponse value) {
+        return new JAXBElement<PicLogsResponse>(_PicLogsResponse_QNAME, PicLogsResponse.class, null, value);
+    }
+
+    /**
+     * Create an instance of {@link JAXBElement }{@code <}{@link GetPictureListResponse }{@code >}}
+     * 
+     */
+    @XmlElementDecl(namespace = "http://srv.sd/", name = "getPictureListResponse")
+    public JAXBElement<GetPictureListResponse> createGetPictureListResponse(GetPictureListResponse value) {
+        return new JAXBElement<GetPictureListResponse>(_GetPictureListResponse_QNAME, GetPictureListResponse.class, null, value);
+    }
+
+    /**
+     * Create an instance of {@link JAXBElement }{@code <}{@link CreateNewAlbumResponse }{@code >}}
+     * 
+     */
+    @XmlElementDecl(namespace = "http://srv.sd/", name = "createNewAlbumResponse")
+    public JAXBElement<CreateNewAlbumResponse> createCreateNewAlbumResponse(CreateNewAlbumResponse value) {
+        return new JAXBElement<CreateNewAlbumResponse>(_CreateNewAlbumResponse_QNAME, CreateNewAlbumResponse.class, null, value);
+    }
+
+    /**
      * Create an instance of {@link JAXBElement }{@code <}{@link byte[]}{@code >}}
      * 
      */
@@ -469,18 +541,18 @@ public class ObjectFactory {
      * Create an instance of {@link JAXBElement }{@code <}{@link byte[]}{@code >}}
      * 
      */
-    @XmlElementDecl(namespace = "", name = "arg1", scope = UploadPicture.class)
-    public JAXBElement<byte[]> createUploadPictureArg1(byte[] value) {
-        return new JAXBElement<byte[]>(_UploadPictureArg1_QNAME, byte[].class, UploadPicture.class, ((byte[]) value));
+    @XmlElementDecl(namespace = "", name = "return", scope = GetFileResponse.class)
+    public JAXBElement<byte[]> createGetFileResponseReturn(byte[] value) {
+        return new JAXBElement<byte[]>(_DownloadPictureResponseReturn_QNAME, byte[].class, GetFileResponse.class, ((byte[]) value));
     }
 
     /**
      * Create an instance of {@link JAXBElement }{@code <}{@link byte[]}{@code >}}
      * 
      */
-    @XmlElementDecl(namespace = "", name = "return", scope = GetFileResponse.class)
-    public JAXBElement<byte[]> createGetFileResponseReturn(byte[] value) {
-        return new JAXBElement<byte[]>(_DownloadPictureResponseReturn_QNAME, byte[].class, GetFileResponse.class, ((byte[]) value));
+    @XmlElementDecl(namespace = "", name = "arg1", scope = UploadPicture.class)
+    public JAXBElement<byte[]> createUploadPictureArg1(byte[] value) {
+        return new JAXBElement<byte[]>(_UploadPictureArg1_QNAME, byte[].class, UploadPicture.class, ((byte[]) value));
     }
 
 }
