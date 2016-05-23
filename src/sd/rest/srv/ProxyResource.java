@@ -50,6 +50,7 @@ public class ProxyResource {
 		return request.send();
 	}
 
+	// funciona, atualiza aquando de um delete, mas nao de um upload
 	@GET
 	@Path("getPictureList/{albumID}")
 	@Produces(MediaType.APPLICATION_JSON)
@@ -72,6 +73,7 @@ public class ProxyResource {
 				Object picture = picturesIt.next();
 				pictureNames.add(((JSONObject) picture).get("id") + "." + ((JSONObject) picture).get("title"));
 			}
+			
 			return Response.ok(pictureNames).build();
 		} catch (ParseException e) {
 			e.printStackTrace();
@@ -81,6 +83,7 @@ public class ProxyResource {
 
 	}
 
+	// funciona, cria logo no imgur e na aplicacao
 	@POST
 	@Path("createNewAlbum")
 	@Produces(MediaType.APPLICATION_JSON)
@@ -110,6 +113,7 @@ public class ProxyResource {
 
 	}
 
+	// funciona, apaga logo no imgur
 	@DELETE
 	@Path("deleteAlbum/{albumID}")
 	public Response deleteAlbum(@PathParam("albumID") String albumID) {
@@ -140,7 +144,7 @@ public class ProxyResource {
 		}
 	}
 
-	// TODO: algumas fotografias geram EOFexception???
+	// TODO: fotografias com titulo geram EOF
 	@GET
 	@Path("downloadPicture/{pictureID}")
 	@Produces(MediaType.APPLICATION_OCTET_STREAM)
@@ -155,8 +159,7 @@ public class ProxyResource {
 			JSONObject picture = (JSONObject) obj.get("data");
 			com.github.scribejava.core.model.Response imgRes = buildReq((String) picture.get("link"),
 					Verb.GET, null);
-			
-			System.out.println(picture.get("size"));
+			System.out.println((String) picture.get("link"));
 			byte[] data = new byte[(int)(long) picture.get("size")];
 			DataInputStream dataStream = new DataInputStream(imgRes.getStream());
 			dataStream.readFully(data);
@@ -169,6 +172,11 @@ public class ProxyResource {
 		return Response.status(Status.NOT_FOUND).build();
 	}
 
+	// TODO: descobrir porque não atualiza imediatamente após delete?
+	// apenas atualiza neste caso
+	// temos dois albums, apagamos um, criamos um album novo e apagamos tambem
+	// o primeiro album desaparece da lista
+	// mas ambos desaparecem do imgur
 	@GET
 	@Path("getAlbumList")
 	@Produces(MediaType.APPLICATION_JSON)
@@ -195,6 +203,7 @@ public class ProxyResource {
 		}
 		return Response.status(Status.NOT_FOUND).build();
 	}
+	// funciona
 	@GET
 	@Path("getAlbumId/{albumName}")
 	@Produces(MediaType.APPLICATION_JSON)
@@ -216,11 +225,13 @@ public class ProxyResource {
 		}
 		return Response.status(Status.NOT_FOUND).build();
 	}
+	
+	// funciona?
 	@GET
 	@Path("getPictureId/{albumID}/{pictureName}")
 	@Produces(MediaType.APPLICATION_JSON)
 	@Consumes(MediaType.APPLICATION_JSON)
-	public Response getPictureID(@PathParam("albumName") String albumID
+	public Response getPictureID(@PathParam("albumID") String albumID
 			,@PathParam("pictureName") String pictureName) {
 		// garantir que e passado o albumID em vez do albumName
 		// ou extrair o ID a partir do name
@@ -245,19 +256,22 @@ public class ProxyResource {
 
 	}
 
+	// apaga corretamente no site
 	@DELETE
 	@Path("deletePicture/{pictureID}")
-	public Response deletePicture(@PathParam("pictureName") String pictureID) {
+	public Response deletePicture(@PathParam("pictureID") String pictureID) {
 
-		String url = "https://api.imgur.com/3/image/" + pictureID; // TODO: preencher url
+		String url = "https://api.imgur.com/3/image/" + pictureID;
 		com.github.scribejava.core.model.Response delRes = buildReq(url, Verb.DELETE,null);
 		System.out.println(" del pic " + delRes.getCode());
+		System.out.println(pictureID);
 		boolean ok = 200 == delRes.getCode();
 		if (ok)
 			return Response.ok().build();
 		return Response.status(Status.NOT_FOUND).build();
 	}
 
+	// faz upload corretamente
 	@POST
 	@Path("uploadPicture/{albumName}/{pictureName}")
 	@Consumes(MediaType.APPLICATION_OCTET_STREAM)

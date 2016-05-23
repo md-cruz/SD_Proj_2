@@ -9,6 +9,7 @@ import java.net.SocketTimeoutException;
 import java.net.URI;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -305,7 +306,6 @@ public class SharedGalleryContentProviderIncludingRest implements GalleryContent
 					.request().accept(MediaType.APPLICATION_JSON);
 
 			Response reply = replyB.get();
-			System.out.println(reply.getStatusInfo());
 			if (reply.getStatusInfo().equals(Status.OK)) {
 				albumNames = replyB.get(String[].class);
 				for (int i = 0; i < albumNames.length; i++) {
@@ -475,15 +475,15 @@ public class SharedGalleryContentProviderIncludingRest implements GalleryContent
 					.accept(MediaType.APPLICATION_JSON);
 
 			Response reply = replyB.get();
-
 			if (reply.getStatusInfo().equals(Status.OK)) {
 				pictureNames = replyB.get(String[].class);
 				for (int i = 0; i < pictureNames.length; i++) {
 					SharedPicture pic = new SharedPicture(pictureNames[i]);
 					if (!lst.contains(pic) && !pic.getName().endsWith(".deleted"))
 						lst.add(pic);
-					done = true;
 				}
+				done = true;
+
 
 			}
 			// else try again
