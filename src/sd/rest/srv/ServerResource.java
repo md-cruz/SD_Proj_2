@@ -65,7 +65,7 @@ public class ServerResource {
 	public Response createNewAlbum(String albumName) {
 		boolean result = createNewAlb(albumName);
 		if (result) {
-			albumLogs.put(albumName, String.valueOf(System.currentTimeMillis()));
+			albumLogs.put(albumName, "create."+String.valueOf(System.currentTimeMillis()));
 			return Response.ok(true).build();
 		}
 		return Response.status(Status.NOT_FOUND).build();
@@ -88,7 +88,7 @@ public class ServerResource {
 	public Response deleteAlbum(@PathParam("albumName") String albumName) {
 		boolean success = deleteAlb(albumName);
 		if (success) {
-			albumLogs.put(albumName, String.valueOf(System.currentTimeMillis()));
+			albumLogs.put(albumName, "delete."+String.valueOf(System.currentTimeMillis()));
 			return Response.ok().build();
 		}
 		return Response.status(Status.NOT_FOUND).build();
@@ -208,8 +208,8 @@ public class ServerResource {
 			@PathParam("pictureName") String pictureName) {
 		boolean success = deletePic(albumName, pictureName);
 		if (success) {
-			Map<String, String> tmp = new HashMap<String,String>();
-			tmp.put(pictureName, String.valueOf(System.currentTimeMillis()));
+			Map<String, String> tmp = picLogs.get(albumName);
+			tmp.put(pictureName, "delete."+String.valueOf(System.currentTimeMillis()));
 			picLogs.put(albumName,tmp);
 
 			return Response.ok().build();
@@ -240,7 +240,9 @@ public class ServerResource {
 
 		if (success) {
 			Map<String, String> tmp = new HashMap<String,String>();
-			tmp.put(pictureName, String.valueOf(System.currentTimeMillis()));
+			if(picLogs.containsKey(albumName))
+				tmp = picLogs.get(albumName);
+			tmp.put(pictureName, "create."+String.valueOf(System.currentTimeMillis()));
 			picLogs.put(albumName,tmp);
 
 			return Response.ok().build();

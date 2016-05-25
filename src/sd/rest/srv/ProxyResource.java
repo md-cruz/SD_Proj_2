@@ -85,7 +85,6 @@ public class ProxyResource {
 					pictureNames.add(nameAndId);
 				}
 			}
-			
 			return Response.ok(pictureNames).build();
 		} catch (ParseException e) {
 			e.printStackTrace();
@@ -133,7 +132,7 @@ public class ProxyResource {
 			res = (JSONObject) parser.parse(createRes.getBody());
 			
 			JSONObject albums = (JSONObject) res.get("data");
-			albumLogs.put(albums.get("id") + "." +albumName, "create."+String.valueOf(System.currentTimeMillis()));
+			albumLogs.put((String) albums.get("id"), "create."+String.valueOf(System.currentTimeMillis()));
 
 			return Response.ok((String)albums.get("id")).build();
 			} catch (ParseException e) {
@@ -154,8 +153,11 @@ public class ProxyResource {
 		boolean ok = 200 == delRes.getCode();
 		System.out.println("delete " + delRes.getCode());
 		// meter os deletes nos logs
-		if (ok)
+		if (ok){
+			albumLogs.put(albumID,  "delete."+String.valueOf(System.currentTimeMillis()));
+			System.out.println(albumLogs);
 			return Response.ok().build();
+		}
 		return Response.status(Status.NOT_FOUND).build();
 
 	}
@@ -176,7 +178,6 @@ public class ProxyResource {
 		}
 	}
 
-	// TODO: fotografias com titulo geram EOF
 	@GET
 	@Path("downloadPicture/{pictureID}")
 	@Produces(MediaType.APPLICATION_OCTET_STREAM)
@@ -232,16 +233,19 @@ public class ProxyResource {
 			Iterator albumsIt = albums.iterator();
 			while (albumsIt.hasNext()){
 				Object album = albumsIt.next();
+				String albId = (String) ((JSONObject) album).get("id");
 				String nameAndId = ((JSONObject) album).get("id") + "." + ((JSONObject) album).get("title");
-				if(!albumLogs.containsKey(nameAndId)){
-					albumLogs.put(nameAndId, "create."+String.valueOf(((JSONObject) album).get("datetime")));
+				if(!albumLogs.containsKey(albId)){
+					albumLogs.put(albId, "create."+String.valueOf(((JSONObject) album).get("datetime")));
 					albumNames.add(nameAndId);
 				}
 				
-				else if(!albumLogs.get(nameAndId).split("\\.")[0].equalsIgnoreCase("delete")){
+				else if(!albumLogs.get(albId).split("\\.")[0].equalsIgnoreCase("delete")){
 					albumNames.add(nameAndId);	
-					System.out.println("alb " + nameAndId+albumLogs.get(nameAndId));}
+					System.out.println("alb " + nameAndId+ "-"+albumLogs.get(albId));}
 				}
+			System.out.println(albumLogs);
+
 			return Response.ok(albumNames).build();
 		} catch (ParseException e) {
 			e.printStackTrace();
@@ -360,8 +364,8 @@ public class ProxyResource {
 		
 		service.signRequest(at, request);
 		com.github.scribejava.core.model.Response r = request.send();*/
-		System.out.println(" upload pic " + createRes.getCode());
-		System.out.println(createRes.getBody());
+		//System.out.println(" upload pic " + createRes.getCode());
+		//System.out.println(createRes.getBody());
 		boolean ok = 200 == createRes.getCode();
 		if (ok){
 			JSONParser parser = new JSONParser();

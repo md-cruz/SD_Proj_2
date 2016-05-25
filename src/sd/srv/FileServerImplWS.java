@@ -4,6 +4,8 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.net.DatagramPacket;
 import java.net.InetAddress;
 import java.net.MulticastSocket;
@@ -13,6 +15,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Scanner;
 import java.util.regex.Pattern;
 
 import javax.jws.WebMethod;
@@ -33,7 +36,7 @@ public class FileServerImplWS {
 	private static final String WSERVICE = "GiveMeYourIps";
 	private File basePath;
 	private static Map<String, String> albumLogs;
-	private static Map<String, Map<String, String>> picLogs;
+	private static Map<String, Map<String, String>> pictureLogs;
 
 	public FileServerImplWS() {
 		this(".");
@@ -44,7 +47,7 @@ public class FileServerImplWS {
 		super();
 		basePath = new File(pathname);
 		albumLogs = new HashMap<String,String>();
-		picLogs = new HashMap<String, Map<String,String>>();
+		pictureLogs = new HashMap<String, Map<String,String>>();
 	}
 
 	@WebMethod
@@ -75,9 +78,9 @@ public class FileServerImplWS {
 
 	@WebMethod
 	public String picLogs(@PathParam("album") String album, @PathParam("picture") String picture) {
-		if (picLogs.containsKey(album)) {
-			if (picLogs.get(album).containsKey(picture)) {
-				String s = picLogs.get(album).get(picture);
+		if (pictureLogs.containsKey(album)) {
+			if (pictureLogs.get(album).containsKey(picture)) {
+				String s = pictureLogs.get(album).get(picture);
 				return s;
 			}
 		}
@@ -126,9 +129,9 @@ public class FileServerImplWS {
 				deletedPicture.delete();
 			deletedPicture.renameTo(del);
 			
-			Map<String,String> tmp = new HashMap<String,String>();
+			Map<String,String> tmp = pictureLogs.get(albumName);
 			tmp.put(pictureName,String.valueOf(System.currentTimeMillis()));
-			picLogs.put(albumName,tmp);		}
+			pictureLogs.put(albumName,tmp);		}
 		else
 			throw new InfoNotFoundException("Picture not found");
 	}
@@ -207,20 +210,83 @@ public class FileServerImplWS {
 			sOut.close();
 			String [] s = path.split(Pattern.quote(File.separator));
 			Map<String,String> tmp = new HashMap<String,String>();
+			if(pictureLogs.containsKey(s[1]))
+				tmp = pictureLogs.get(s[1]);
 			tmp.put(s[1],String.valueOf(System.currentTimeMillis()));
-			picLogs.put(s[0],tmp);
+			pictureLogs.put(s[0],tmp);
 		} else
 			throw new PictureExistsException("No picture");
 	}
 	
 	
 	public static void main(String args[]) throws Exception {
-		String path = args.length > 0 ? args[0] : ".";
+		String path = args.length > 0 ? args[0] : "./SOAPServer";
+		File serverFile = new File(path);
+		if(!serverFile.exists())
+			serverFile.mkdirs();
 		String url = "http://"+InetAddress.getLocalHost().getHostAddress() +":8080/FileServer";
 		Endpoint.publish("http://0.0.0.0:8080/FileServer", new FileServerImplWS(path));
 		System.err.println("FileServer started " + url);
-		albumLogs = new HashMap<String,String>();
-		picLogs = new HashMap<String, Map<String,String>>();
+		File albLogs = new File(path,"albLogs.dat");
+		File picLogs = new File(path,"picLogs.dat");
+		if(albLogs.exists() && albLogs.isFile()){
+			FileInputStream fin = new FileInputStream(albLogs);
+			ObjectInputStream ois = new ObjectInputStream(fin);
+			albumLogs = (Map<String, String>) ois.readObject();
+			System.out.println(albumLogs);
+			ois.close();
+		}else{
+			albumLogs = new HashMap<String,String>();
+		}
+		if(picLogs.exists() && picLogs.isFile()){
+			FileInputStream fin = new FileInputStream(picLogs);
+			ObjectInputStream ois = new ObjectInputStream(fin);
+			pictureLogs = (Map<String, Map<String, String>>) ois.readObject();
+			System.out.println(pictureLogs);
+			ois.close();
+		}else{
+			pictureLogs = new HashMap<String, Map<String,String>>();
+		}
+		
+		createShutDownHook(albLogs,picLogs,albumLogs, pictureLogs);
+
+		answerMulticast(url);
+		
+		Scanner in = new Scanner(System.in);
+		System.out.println("Para correr com o eclipse, escrever EXIT na consola para");
+		System.out.println("simular uma terminacao do programa com CTRL+C");
+		while(!in.nextLine().equals("EXIT")){
+			System.out.println("not leaving yet");
+		}
+		System.exit(0);
+	}
+
+	private static void createShutDownHook(File albLogsFile, File picLogsFile, Map<String, String> albLogs, Map<String, Map<String, String>> picLogs){
+		  Runtime.getRuntime().addShutdownHook(new Thread() {
+		   @Override
+		   public void run() {
+			   try{
+				   System.out.println("writing logs!");
+			   	FileOutputStream fout = new FileOutputStream(picLogsFile);
+				ObjectOutputStream oos = new ObjectOutputStream(fout);   
+				oos.writeObject(picLogs);
+				oos.close();
+				FileOutputStream fout1 = new FileOutputStream(albLogsFile);
+				ObjectOutputStream oos1 = new ObjectOutputStream(fout1);   
+				oos1.writeObject(albLogs);
+				oos1.close();
+			   }catch(Exception e){
+				   e.printStackTrace();
+			   }
+		   }
+		  });
+		 
+		 }
+	
+	private static void answerMulticast(String url) {
+		
+		new Thread(() -> {
+			try {
 		final String addr = "228.0.0.1";
 
 		final InetAddress address = InetAddress.getByName(addr);
@@ -242,5 +308,11 @@ public class FileServerImplWS {
 				socket.send(sendingPacket);
 			}
 		}
+			} catch (Exception e) {
+				e.printStackTrace();
+
+			}
+			}).start();
+		
 	}
 }

@@ -12,6 +12,7 @@ import java.net.MulticastSocket;
 import java.net.URI;
 import java.nio.file.Files;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.Scanner;
 
 import javax.ws.rs.core.UriBuilder;
@@ -47,8 +48,12 @@ public class ProxyServer {
 				.build(ImgurApi.instance());
 		ProxyResource.albumLogs = new HashMap<String,String>();
 		ProxyResource.picLogs = new HashMap<String, String>();
-		File atFile = new File("AccessToken.dat");
-		File rtFile = new File("RefreshToken.dat");
+		String path = args.length > 0 ? args[0] : "./PROXYServer";
+		File serverFile = new File(path);
+		if(!serverFile.exists())
+			serverFile.mkdirs();
+		File atFile = new File(serverFile,"AccessToken.dat");
+		File rtFile = new File(serverFile,"RefreshToken.dat");
 		if(!atFile.exists()){
 		
 			Scanner in = new Scanner(System.in);
@@ -91,6 +96,29 @@ public class ProxyServer {
 			System.out.println(ProxyResource.at.getAccessToken());
 		}
 		
+		File albLogs = new File(serverFile,"albLogs.dat");
+		File picLogs = new File(serverFile,"picLogs.dat");
+		if(albLogs.exists() && albLogs.isFile()){
+			FileInputStream fin = new FileInputStream(albLogs);
+			ObjectInputStream ois = new ObjectInputStream(fin);
+			ProxyResource.albumLogs = (Map<String, String>) ois.readObject();
+			System.out.println(ProxyResource.albumLogs);
+			ois.close();
+		}else{
+			ProxyResource.albumLogs = new HashMap<String,String>();
+		}
+		if(picLogs.exists() && picLogs.isFile()){
+			FileInputStream fin = new FileInputStream(picLogs);
+			ObjectInputStream ois = new ObjectInputStream(fin);
+			ProxyResource.picLogs = (Map<String, String>) ois.readObject();
+			System.out.println(ProxyResource.picLogs);
+			ois.close();
+		}else{
+			ProxyResource.picLogs = new HashMap<String, String>();
+		}
+		createShutDownHook(albLogs,picLogs,ServerResource.albumLogs, ServerResource.picLogs);
+
+		
 	
 		config.register(ProxyResource.class);
 		
@@ -101,7 +129,36 @@ public class ProxyServer {
 		
 		answerMulticast(url);
 		
+		Scanner in = new Scanner(System.in);
+		System.out.println("Para correr com o eclipse, escrever EXIT na consola para");
+		System.out.println("simular uma terminacao do programa com CTRL+C");
+		while(!in.nextLine().equals("EXIT")){
+			System.out.println("not leaving yet");
+		}
+		System.exit(0);
+		
 	}
+	private static void createShutDownHook(File albLogsFile, File picLogsFile, Map<String, String> albLogs, Map<String, Map<String, String>> picLogs){
+		  Runtime.getRuntime().addShutdownHook(new Thread() {
+		   @Override
+		   public void run() {
+			   try{
+				   System.out.println("writing logs!");
+			   	FileOutputStream fout = new FileOutputStream(picLogsFile);
+				ObjectOutputStream oos = new ObjectOutputStream(fout);   
+				oos.writeObject(picLogs);
+				oos.close();
+				FileOutputStream fout1 = new FileOutputStream(albLogsFile);
+				ObjectOutputStream oos1 = new ObjectOutputStream(fout1);   
+				oos1.writeObject(albLogs);
+				oos1.close();
+			   }catch(Exception e){
+				   e.printStackTrace();
+			   }
+		   }
+		  });
+		 
+		 }
 
 	private static void saveTokens( OAuth2AccessToken at, File atFile, File rtFile) {
 		String accessToken = at.toString();
@@ -128,7 +185,8 @@ public class ProxyServer {
 		}
 	}
 
-	private static void answerMulticast(String localhost) {		
+	private static void answerMulticast(String localhost) {	
+		new Thread(() -> {
 			try {
 				final String addr = "229.0.0.1";
 				System.out.println("new thread launched");
@@ -156,6 +214,6 @@ public class ProxyServer {
 				e.printStackTrace();
 
 			}
-		
+			}).start();
 	}
 }
